@@ -1,0 +1,23 @@
+{
+  "cxxNamespace": ["nitronfc"],
+  "ios": {
+    "iosModuleName": "NitroNfc"
+  },
+  "android": {
+    "androidNamespace": ["nitronfc"],
+    "androidCxxLibName": "nitronfc"
+  },
+  "autolinking": {
+    "NitroNfc": {
+      "ios": {
+        "language": "swift",
+        "implementationClassName": "NitroNfc"
+      },
+      "android": {
+        "language": "kotlin",
+        "implementationClassName": "NitroNfc"
+      }
+    }
+  },
+  "ignorePaths": ["node_modules"]
+}
