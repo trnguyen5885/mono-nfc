@@ -1,7 +1,7 @@
 {
   "name": "react-native-nitro-nfc",
   "version": "0.1.0",
-  "description": "react-native-nitro-nfc",
+  "description": "React Native Nitro NFC reader for Vietnamese citizen ID chips",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {
@@ -19,6 +19,7 @@
     "ios",
     "cpp",
     "nitrogen",
+    "vendor",
     "nitro.json",
     "*.podspec",
     "react-native.config.js",
