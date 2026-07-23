@@ -28,7 +28,7 @@ import java.security.Security
 class NFCScanActivity : AppCompatActivity() {
   companion object {
     private const val GUIDE_TEXT_DEFAULT =
-      "Đưa CCCD sát mặt lưng điện thoại"
+      "Place the citizen ID card against the back of the phone"
     private const val GUIDE_TEXT_COLOR_DEFAULT = "#6B7280"
     private const val GUIDE_TEXT_COLOR_ERROR = "#C62828"
 

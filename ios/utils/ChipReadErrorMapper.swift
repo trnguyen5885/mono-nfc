@@ -15,7 +15,7 @@ enum ChipReadErrorMapper {
     if isSessionInvalidatedDescription(description) {
       return .readFailed(
         code: "SessionInvalidated",
-        message: "Phiên NFC bị ngắt giữa chừng"
+        message: "The NFC session was interrupted"
       )
     }
 
@@ -25,7 +25,7 @@ enum ChipReadErrorMapper {
 
     return .readFailed(
       code: "Unknown",
-      message: "Đã xảy ra lỗi không xác định khi đọc NFC"
+      message: "An unknown error occurred while reading NFC"
     )
   }
 
@@ -40,67 +40,67 @@ enum ChipReadErrorMapper {
         actualTag: actualTag,
       )
     case .UnexpectedError:
-      return "Đã xảy ra lỗi không xác định"
+      return "An unknown error occurred"
     case .NFCNotSupported:
-      return "Thiết bị không hỗ trợ NFC"
+      return "NFC is not supported on this device"
     case .NoConnectedTag:
-      return "Không kết nối được với chip NFC"
+      return "Unable to connect to the NFC chip"
     case .D087Malformed:
-      return "Dữ liệu bảo mật từ chip không hợp lệ"
+      return "The chip security data is invalid"
     case .InvalidResponseChecksum:
-      return "Mã kiểm tra phản hồi từ chip không hợp lệ"
+      return "The chip response checksum is invalid"
     case .MissingMandatoryFields:
-      return "Thiếu trường dữ liệu bắt buộc trên chip"
+      return "Required chip data is missing"
     case .CannotDecodeASN1Length:
-      return "Không giải mã được độ dài dữ liệu ASN.1"
+      return "Unable to decode the ASN.1 data length"
     case .InvalidASN1Value:
-      return "Giá trị dữ liệu ASN.1 không hợp lệ"
+      return "The ASN.1 data value is invalid"
     case .UnableToProtectAPDU:
-      return "Không thể mã hóa lệnh APDU bảo mật"
+      return "Unable to encrypt the secure APDU command"
     case .UnableToUnprotectAPDU:
-      return "Không thể giải mã phản hồi APDU bảo mật"
+      return "Unable to decrypt the secure APDU response"
     case .UnsupportedDataGroup:
-      return "Nhóm dữ liệu trên chip không được hỗ trợ"
+      return "The chip data group is not supported"
     case .DataGroupNotRead:
-      return "Không đọc được nhóm dữ liệu trên chip"
+      return "Unable to read the chip data group"
     case .UnknownTag:
-      return "Không nhận diện được loại thẻ NFC"
+      return "The NFC tag type was not recognized"
     case .UnknownImageFormat:
-      return "Định dạng ảnh trên chip không được hỗ trợ"
+      return "The chip image format is not supported"
     case .NotImplemented:
-      return "Tính năng này hiện chưa được hỗ trợ"
+      return "This feature is not supported yet"
     case .TagNotValid:
-      return "Thẻ NFC không hợp lệ"
+      return "The NFC tag is invalid"
     case .ConnectionError:
-      return "Kết nối với chip NFC bị gián đoạn"
+      return "The connection to the NFC chip was interrupted"
     case .UserCanceled:
-      return "Phiên NFC đã bị hủy"
+      return "NFC session was canceled"
     case .InvalidMRZKey:
-      return "Khóa CAN không hợp lệ"
+      return "Invalid CAN key"
     case .MoreThanOneTagFound:
-      return "Phát hiện nhiều hơn một thẻ NFC, vui lòng chỉ để một CCCD gần thiết bị"
+      return "More than one NFC tag was found. Keep only one citizen ID card near the device"
     case .InvalidHashAlgorithmSpecified:
-      return "Thuật toán băm không hợp lệ"
+      return "The hash algorithm is invalid"
     case .UnsupportedCipherAlgorithm:
-      return "Thuật toán mã hóa của chip không được hỗ trợ"
+      return "The chip encryption algorithm is not supported"
     case .UnsupportedMappingType:
-      return "Kiểu ánh xạ PACE không được hỗ trợ"
+      return "The PACE mapping type is not supported"
     case .PACEError(let step, let reason):
       return localizedPACEErrorMessage(step: step, reason: reason)
     case .ChipAuthenticationFailed:
-      return "Xác thực chip thất bại"
+      return "Chip authentication failed"
     case .InvalidDataPassed(let reason):
       return localizedInvalidDataMessage(reason: reason)
     case .NotYetSupported(let reason):
       return localizedNotYetSupportedMessage(reason: reason)
     case .Unknown(let wrappedError):
       if isTimeoutDescription(wrappedError.localizedDescription) {
-        return "Phiên NFC đã hết thời gian, vui lòng thử lại"
+        return "NFC session timed out, please try again"
       }
       if isSessionInvalidatedDescription(wrappedError.localizedDescription) {
-        return "Phiên NFC bị ngắt giữa chừng"
+        return "The NFC session was interrupted"
       }
-      return "Đã xảy ra lỗi trong quá trình giao tiếp với chip NFC"
+      return "An error occurred while communicating with the NFC chip"
     }
   }
 
@@ -113,7 +113,7 @@ enum ChipReadErrorMapper {
     case .InvalidMRZKey:
       return .readFailed(
         code: "InvalidMRZKey",
-        message: "Khóa CAN không hợp lệ"
+        message: "Invalid CAN key"
       )
     case .Unknown(let wrappedError):
       return mapWrappedReaderError(wrappedError)
@@ -138,13 +138,13 @@ enum ChipReadErrorMapper {
     if isSessionInvalidatedDescription(description) {
       return .readFailed(
         code: "SessionInvalidated",
-        message: "Phiên NFC bị ngắt giữa chừng"
+        message: "The NFC session was interrupted"
       )
     }
 
     return .readFailed(
       code: "Unknown",
-      message: "Đã xảy ra lỗi trong quá trình giao tiếp với chip NFC"
+      message: "An error occurred while communicating with the NFC chip"
     )
   }
 
@@ -169,35 +169,35 @@ enum ChipReadErrorMapper {
     let normalized = reason.trimmingCharacters(in: .whitespacesAndNewlines)
 
     if isTimeoutDescription(normalized) {
-      return "Xác thực PACE đã hết thời gian"
+      return "PACE authentication timed out"
     }
 
     if normalized.localizedCaseInsensitiveContains("not yet implemented") ||
       normalized.localizedCaseInsensitiveContains("not supported") {
-      return "Xác thực PACE hiện chưa được hỗ trợ"
+      return "PACE authentication is not supported yet"
     }
 
     if normalized.localizedCaseInsensitiveContains("security status not satisfied") {
-      return "Xác thực PACE thất bại do chip từ chối xác thực"
+      return "PACE authentication failed because the chip rejected authentication"
     }
 
-    return "Xác thực PACE thất bại tại bước \(step)"
+    return "PACE authentication failed at step \(step)"
   }
 
   private static func localizedInvalidDataMessage(reason: String) -> String {
     if reason.localizedCaseInsensitiveContains("can") {
-      return "Dữ liệu CAN không hợp lệ"
+      return "The CAN data is invalid"
     }
 
-    return "Dữ liệu đầu vào không hợp lệ"
+    return "The input data is invalid"
   }
 
   private static func localizedNotYetSupportedMessage(reason: String) -> String {
     if reason.localizedCaseInsensitiveContains("pace") {
-      return "Chip không hỗ trợ PACE"
+      return "The chip does not support PACE"
     }
 
-    return "Tính năng này hiện chưa được hỗ trợ"
+    return "This feature is not supported yet"
   }
 
   private static func readerErrorCode(_ error: NFCPassportReaderError) -> String {
@@ -269,10 +269,10 @@ enum ChipReadErrorMapper {
     let code = "0x\(hex(sw1)) 0x\(hex(sw2))"
 
     if let reason = responseStatusDescription(sw1: sw1, sw2: sw2) {
-      return "Chip từ chối yêu cầu đọc NFC (\(reason))"
+      return "The chip rejected the NFC read request (\(reason))"
     }
 
-    return "Chip trả về mã lỗi khi xử lý yêu cầu đọc NFC (\(code))"
+    return "The chip returned an error while processing the NFC read request (\(code))"
   }
 
   private static func localizedInvalidResponseMessage(
@@ -284,41 +284,41 @@ enum ChipReadErrorMapper {
     let expected = "\(tagDescription(for: expectedTag)) (0x\(hex(expectedTag)))"
     let actual = "\(tagDescription(for: actualTag)) (0x\(hex(actualTag)))"
 
-    return "Dữ liệu trả về từ \(dataGroupName) không đúng cấu trúc: mong đợi \(expected), nhưng nhận được \(actual)"
+    return "The data returned by \(dataGroupName) has an invalid structure: expected \(expected), received \(actual)"
   }
 
   private static func responseStatusDescription(sw1: UInt8, sw2: UInt8) -> String? {
     switch (sw1, sw2) {
     case (0x63, 0x00):
-      return "xác thực thất bại"
+      return "authentication failed"
     case (0x67, 0x00):
-      return "độ dài dữ liệu gửi tới chip không hợp lệ"
+      return "the data length sent to the chip is invalid"
     case (0x69, 0x82):
-      return "chip từ chối do chưa đủ điều kiện bảo mật"
+      return "the chip rejected the request because security conditions were not met"
     case (0x69, 0x83):
-      return "phương thức xác thực trên chip đã bị khóa"
+      return "the chip authentication method is locked"
     case (0x69, 0x85):
-      return "chip không chấp nhận nội dung lệnh"
+      return "the chip did not accept the command content"
     case (0x6A, 0x80):
-      return "dữ liệu gửi tới chip không hợp lệ"
+      return "the data sent to the chip is invalid"
     case (0x6A, 0x81):
-      return "chip không hỗ trợ chức năng được yêu cầu"
+      return "the chip does not support the requested function"
     case (0x6A, 0x82):
-      return "không tìm thấy dữ liệu cần đọc trên chip"
+      return "the requested chip data was not found"
     case (0x6A, 0x86):
-      return "tham số của lệnh đọc không hợp lệ"
+      return "the read command parameter is invalid"
     case (0x6A, 0x88):
-      return "không tìm thấy dữ liệu bảo mật liên quan"
+      return "the related security data was not found"
     case (0x6B, 0x00):
-      return "tham số offset của lệnh đọc vượt quá dữ liệu trên chip"
+      return "the read command offset exceeds the chip data"
     case (0x6D, 0x00):
-      return "chip không hỗ trợ lệnh này"
+      return "the chip does not support this command"
     case (0x6E, 0x00):
-      return "chip không hỗ trợ lớp lệnh này"
+      return "the chip does not support this command class"
     case (0x6F, 0x00):
-      return "chip gặp lỗi nội bộ khi xử lý yêu cầu"
+      return "the chip encountered an internal error while processing the request"
     case (0x90, 0x00):
-      return "phản hồi thành công ngoài dự kiến"
+      return "an unexpected success response was returned"
     default:
       return nil
     }
@@ -327,19 +327,19 @@ enum ChipReadErrorMapper {
   private static func tagDescription(for tag: Int) -> String {
     switch tag {
     case 0x61:
-      return "thẻ Data Group"
+      return "data group tag"
     case 0x75:
-      return "mẫu dữ liệu khuôn mặt"
+      return "face image data"
     case 0x77:
-      return "mẫu dữ liệu bảo mật"
+      return "security data"
     case 0x7F:
-      return "thẻ dữ liệu mở rộng"
+      return "extended data tag"
     case 0xA1:
-      return "thẻ cấu trúc lồng"
+      return "nested structure tag"
     case 0x5F:
-      return "thẻ trường dữ liệu cơ bản"
+      return "basic data field tag"
     default:
-      return "thẻ dữ liệu"
+      return "data tag"
     }
   }
 

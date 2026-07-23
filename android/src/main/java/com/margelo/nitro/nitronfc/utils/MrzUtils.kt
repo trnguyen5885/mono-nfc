@@ -4,13 +4,13 @@ import java.util.Calendar
 import java.util.Locale
 
 /**
- * Utility functions xử lý dữ liệu MRZ (Machine Readable Zone) từ DG1.
+ * Utility functions for processing MRZ (Machine Readable Zone) data from DG1.
  */
 object MrzUtils {
 
   /**
-   * Format ngày sinh từ MRZ (YYMMDD) sang DD/MM/YYYY.
-   * Sử dụng năm hiện tại làm ngưỡng xác định thế kỷ (19xx vs 20xx).
+   * Format the date of birth from MRZ (YYMMDD) as DD/MM/YYYY.
+   * Use the current year as the threshold for the century (19xx vs 20xx).
    */
   fun formatBirthDate(value: String): String {
     if (value.length != 6) return value
@@ -25,8 +25,8 @@ object MrzUtils {
   }
 
   /**
-   * Format ngày hết hạn từ MRZ (YYMMDD) sang DD/MM/20YY.
-   * CCCD luôn hết hạn trong thế kỷ 21.
+   * Format the expiration date from MRZ (YYMMDD) as DD/MM/20YY.
+   * Citizen ID cards always expire in the 21st century.
    */
   fun formatExpireDate(value: String): String {
     if (value.length != 6) return value
@@ -39,8 +39,8 @@ object MrzUtils {
   }
 
   /**
-   * Ghép primaryIdentifier + secondaryIdentifier từ MRZ thành họ tên.
-   * Thay ký tự '<' bằng khoảng trắng và chuẩn hóa.
+   * Combine the primaryIdentifier and secondaryIdentifier from MRZ into a name.
+   * Replace '<' with spaces and normalize whitespace.
    */
   fun normalizeName(primary: String?, secondary: String?): String {
     return listOf(primary, secondary)
@@ -52,23 +52,23 @@ object MrzUtils {
   }
 
   /**
-   * Chuẩn hóa giới tính từ MRZ sang tiếng Việt.
+   * Normalize the gender value from MRZ into English.
    */
   fun normalizeGender(raw: String): String {
     return when (raw.trim().uppercase(Locale.ROOT)) {
-      "M", "MALE", "NAM" -> "Nam"
-      "F", "FEMALE", "NU" -> "Nữ"
-      else -> "Khác"
+      "M", "MALE", "NAM" -> "Male"
+      "F", "FEMALE", "NU" -> "Female"
+      else -> "Other"
     }
   }
 
   /**
-   * Chuẩn hóa quốc tịch từ mã ISO 3166 sang tiếng Việt.
+   * Normalize nationality from an ISO 3166 code into English.
    */
   fun normalizeNationality(raw: String?): String {
     return when (raw?.uppercase(Locale.ROOT)) {
-      "VNM" -> "Việt Nam"
-      null, "" -> "Việt Nam"
+      "VNM" -> "Vietnam"
+      null, "" -> "Vietnam"
       else -> raw
     }
   }

@@ -39,7 +39,7 @@ object NitroNfcRuntime {
   ): Promise<NitroNfcScanResult> {
     val cleanCitizenId = citizenId.trim()
     if (cleanCitizenId.length < 6) {
-      return Promise.rejected(IllegalArgumentException("CCCD không hợp lệ"))
+      return Promise.rejected(IllegalArgumentException("Invalid citizen ID"))
     }
 
     val context = NitroModules.applicationContext
@@ -63,7 +63,7 @@ object NitroNfcRuntime {
 
     return try {
       startActivity(context, cleanCitizenId)
-      emitProgress(0, "Đang mở màn hình NFC native...")
+      emitProgress(0, "Opening the native NFC screen...")
       promise
     } catch (error: Throwable) {
       rejectPending(error)

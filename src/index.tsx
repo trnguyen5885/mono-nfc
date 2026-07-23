@@ -1,9 +1,9 @@
 /**
- * react-native-nitro-nfc — Đọc thông tin CCCD qua chip NFC bằng Nitro Modules.
+ * react-native-nitro-nfc — Read citizen ID data through NFC using Nitro Modules.
  *
- * Kết quả scan mặc định chỉ chứa metadata nhẹ. Dữ liệu binary lớn như ảnh chip,
- * DG1/DG2/DG13/DG14/SOD được lấy lazy qua `getDataGroupBuffer` hoặc
- * `getDataGroupBase64` để tránh làm khựng JS thread.
+ * The default scan result contains lightweight metadata only. Large binary data
+ * such as the chip image and DG1/DG2/DG13/DG14/SOD are loaded lazily through
+ * `getDataGroupBuffer` or `getDataGroupBase64` to reduce JavaScript thread load.
  *
  * @packageDocumentation
  * @module react-native-nitro-nfc
@@ -67,7 +67,7 @@ function validateCitizenId(citizenId: string): string {
   const id = String(citizenId ?? '').trim();
 
   if (!id || id.length < 6 || !/^\d+$/.test(id)) {
-    throw new NFCSDKError('CCCD không hợp lệ', 'InvalidCitizenId');
+    throw new NFCSDKError('Invalid citizen ID', 'InvalidCitizenId');
   }
 
   return id;
@@ -99,7 +99,7 @@ function normalizeProgress(event: NativeProgressPayload): NFCProgressEvent {
     return {
       error: {
         code: event.errorCode || 'Unknown',
-        message: event.errorMessage || event.message || 'Đọc NFC thất bại',
+        message: event.errorMessage || event.message || 'NFC read failed',
       },
     };
   }
@@ -152,7 +152,7 @@ function normalizeError(caughtError: unknown): NFCErrorEvent {
 
   return {
     code: 'Unknown',
-    message: 'Đọc NFC thất bại',
+    message: 'NFC read failed',
   };
 }
 

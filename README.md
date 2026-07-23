@@ -1,6 +1,40 @@
 # react-native-nitro-nfc
 
-React Native Nitro Module để đọc thông tin CCCD qua chip NFC.
+A React Native Nitro Module for reading NFC chip data from Vietnamese citizen ID cards and other electronic documents compatible with electronic passport standards.
+
+## Introduction
+
+The package exposes a JSI/Nitro API for:
+
+- checking NFC availability;
+- opening the native NFC reading UI on iOS and Android;
+- reading citizen ID metadata;
+- receiving scan progress and errors;
+- lazily retrieving binary data groups as ArrayBuffer or Base64;
+- keeping large data in native memory until the application requests it.
+
+The package does not send NFC data to a server or make network requests. Citizen ID data is sensitive personal information, so applications should not log or persist it unnecessarily.
+
+## Features
+
+- Nitro Modules/JSI instead of the legacy React Native event emitter for the main API.
+- iOS and Android support.
+- IMAGE, DG1, DG2, DG13, DG14, and SOD data-group access.
+- Lightweight scan results that avoid sending large Base64 payloads to JavaScript by default.
+- Promise-based scan API and listener-based API for fire-and-forget flows.
+
+## Requirements
+
+- React Native with the New Architecture enabled.
+- A compatible version of react-native-nitro-modules.
+- A physical NFC device. Android emulators and iOS Simulators cannot read a physical card chip.
+- iOS 13 or later.
+- Android API level 24 or later.
+
+Main native dependencies:
+
+- iOS: CoreNFC and OpenSSL-Universal by default.
+- Android: Android NFC, jmrtd, Bouncy Castle, and AndroidX AppCompat.
 
 ## Installation
 
@@ -8,80 +42,409 @@ React Native Nitro Module để đọc thông tin CCCD qua chip NFC.
 npm install react-native-nitro-nfc react-native-nitro-modules
 ```
 
-`react-native-nitro-modules` is required because this library uses Nitro Modules.
-
-On iOS, run CocoaPods after installing:
+Or:
 
 ```sh
-cd ios && pod install
+yarn add react-native-nitro-nfc react-native-nitro-modules
 ```
 
-## Usage
+After installation, rebuild the native application. For iOS:
+
+```sh
+cd ios
+pod install
+cd ..
+```
+
+No manual NFCSDK registration is required. React Native and Nitro autolinking link the native module during the native build.
+
+## Platform setup
+
+### iOS
+
+In Xcode, open the application target and enable the Near Field Communication Tag Reading capability.
+
+Add the following usage description to the host application's Info.plist:
+
+```xml
+<key>NFCReaderUsageDescription</key>
+<string>This app needs NFC access to read the chip on a citizen ID card.</string>
+```
+
+The host application must also configure the NFC Tag Reading entitlement. The required ISO 7816 application identifiers depend on the card type and the application's Apple Developer configuration. The package cannot add host-app capabilities or entitlements automatically.
+
+Run CocoaPods again after changing the Xcode capability:
+
+```sh
+cd ios
+pod install
+```
+
+OpenSSL-Universal is linked by default. If the host application provides OpenSSL separately:
+
+```sh
+NITRO_NFC_USE_MANUAL_OPENSSL=1 pod install
+```
+
+### Android
+
+The package manifest declares the NFC permission and native scan activity. The host application normally does not need to add the NFC permission manually.
+
+The device must have NFC hardware and NFC must be enabled in Settings. isAvailable() checks for an NFC adapter; starting a scan reports NFCDisabled when NFC is turned off.
+
+## Quick start
+
+The Promise-based API is recommended when the caller needs the result directly:
+
+```tsx
+import { NFCSDK, NFCSDKError } from 'react-native-nitro-nfc';
+
+async function readCitizenCard(citizenId: string) {
+  if (!NFCSDK.isAvailable()) {
+    throw new Error('NFC is not available on this device');
+  }
+
+  try {
+    const result = await NFCSDK.scan({
+      citizenId,
+      onProgress: (event) => {
+        if ('error' in event) {
+          console.warn('[NFC error]', event.error.code, event.error.message);
+          return;
+        }
+
+        console.log('[NFC] ' + event.progress + '% - ' + event.message);
+      },
+    });
+
+    console.log('Full name:', result.fullName);
+    console.log('Citizen ID:', result.citizenId);
+    return result;
+  } catch (error) {
+    if (error instanceof NFCSDKError) {
+      console.warn(error.code, error.message);
+    } else if (error instanceof Error) {
+      console.warn(error.message);
+    }
+
+    throw error;
+  }
+}
+
+await readCitizenCard('001234567890');
+```
+
+citizenId is trimmed and must contain only digits, with a minimum length of 6 characters. Vietnamese citizen ID cards normally contain 12 digits. On iOS and Android, the last 6 digits are used as the CAN key for authentication.
+
+## API reference
+
+### NFCSDK.isAvailable(): boolean
+
+Checks whether NFC can be used on the current device.
+
+Returns false when:
+
+- the device has no NFC adapter;
+- the native module is unavailable or not linked;
+- the native availability check fails.
+
+This method does not open the NFC UI or request runtime permission.
+
+### NFCSDK.scan(options): Promise<NFCScanResult>
+
+Starts an NFC reading session and resolves with the result after a successful read.
 
 ```ts
-import { NFCSDK } from 'react-native-nitro-nfc';
+type ScanOptions = {
+  citizenId: string;
+  onProgress?: (event: NFCProgressEvent) => void;
+};
 
-const result = await NFCSDK.scan({
+NFCSDK.scan(options: ScanOptions): Promise<NFCScanResult>;
+```
+
+The method:
+
+- opens the native NFC screen;
+- calls onProgress while reading;
+- resolves with NFCScanResult on success;
+- rejects when the user cancels, NFC is unavailable, authentication fails, or reading fails;
+- does not allow concurrent native scan sessions.
+
+An error progress event may be delivered before the Promise is rejected.
+
+### NFCSDK.startScan(options): void
+
+Starts a fire-and-forget scan.
+
+```ts
+NFCSDK.startScan({
   citizenId: '001234567890',
-  onProgress: (event) => {
-    console.log('[NFC progress]', event);
-  },
+});
+```
+
+This method does not return a Promise. Successful results are delivered through onScanResult and errors through onProgress. If a JavaScript scan is already running, a subsequent call is ignored.
+
+Use scan() when the caller needs to await the result.
+
+### NFCSDK.onProgress(listener): NFCSubscription
+
+Registers a global progress listener.
+
+```ts
+const subscription = NFCSDK.onProgress((event) => {
+  if ('error' in event) {
+    console.warn(event.error.code, event.error.message);
+    return;
+  }
+
+  console.log(event.progress, event.message);
 });
 
-console.log(result.fullName, result.citizenId, result.chipImageUri);
+subscription.remove();
+```
 
-const dg1Bytes = NFCSDK.getDataGroupBuffer('DG1');
+Successful event:
+
+```ts
+type NFCProgressEvent = {
+  progress: number;
+  message: string;
+};
+```
+
+Error event:
+
+```ts
+type NFCProgressEvent = {
+  error: {
+    code: string;
+    message: string;
+  };
+};
+```
+
+Avoid using the global listener and scan({ onProgress }) for the same purpose unless duplicate event handling is intentional.
+
+### NFCSDK.onScanResult(listener): NFCSubscription
+
+Registers a listener for successful scan results.
+
+```ts
+const subscription = NFCSDK.onScanResult((result) => {
+  console.log('Scan completed:', result);
+});
+
+subscription.remove();
+```
+
+The listener is not called when a scan fails or is canceled.
+
+For React components, subscribe and unsubscribe with the component lifecycle:
+
+```tsx
+useEffect(() => {
+  const progressSubscription = NFCSDK.onProgress(setProgress);
+  const resultSubscription = NFCSDK.onScanResult(setResult);
+
+  return () => {
+    progressSubscription.remove();
+    resultSubscription.remove();
+  };
+}, []);
+```
+
+### NFCSDK.getDataGroupBuffer(name): ArrayBuffer | undefined
+
+Returns binary data from the latest successful scan.
+
+```ts
+const dg1 = NFCSDK.getDataGroupBuffer('DG1');
+
+if (dg1) {
+  const bytes = new Uint8Array(dg1);
+  console.log('DG1 bytes:', bytes.length);
+}
+```
+
+Supported public names:
+
+| Name  | Contents                                      |
+| ----- | --------------------------------------------- |
+| IMAGE | Image extracted from the chip, when available |
+| DG1   | Basic MRZ and identity data                   |
+| DG2   | Face image or related image data              |
+| DG13  | Extended document data                        |
+| DG14  | Security and chip-authentication data         |
+| SOD   | Security Object Document                      |
+
+Returns undefined when no successful scan exists or the requested group is empty. The getter is synchronous and may allocate a large object on the JavaScript heap.
+
+### NFCSDK.getDataGroupBase64(name): string | undefined
+
+Returns the requested data group as Base64:
+
+```ts
 const sodBase64 = NFCSDK.getDataGroupBase64('SOD');
 ```
 
-`scan()` trả về metadata nhẹ. Các data group lớn chỉ được kéo sang JS khi gọi
-`getDataGroupBuffer()` hoặc `getDataGroupBase64()`.
+Returns undefined when no data is available. Prefer getDataGroupBuffer() when the downstream API supports binary data because Base64 increases memory usage.
 
-Nếu muốn API dạng listener tương thích với bản cũ:
+### NFCSDK.clearCachedScan(): void
+
+Clears the latest result and data retained by native code:
 
 ```ts
-const progressSub = NFCSDK.onProgress(console.log);
-const resultSub = NFCSDK.onScanResult(console.log);
-
-NFCSDK.startScan({ citizenId: '001234567890' });
-
-progressSub.remove();
-resultSub.remove();
+NFCSDK.clearCachedScan();
 ```
 
-## API
+After clearing, data-group getters return undefined until the next successful scan.
 
-- `NFCSDK.isAvailable(): boolean`
-- `NFCSDK.scan({ citizenId: string, onProgress?: (event) => void }): Promise<NFCScanResult>`
-- `NFCSDK.startScan({ citizenId: string }): void`
-- `NFCSDK.onProgress(listener): NFCSubscription`
-- `NFCSDK.onScanResult(listener): NFCSubscription`
-- `NFCSDK.getDataGroupBuffer(name): ArrayBuffer | undefined`
-- `NFCSDK.getDataGroupBase64(name): string | undefined`
-- `NFCSDK.clearCachedScan(): void`
+## Result types
 
-## iOS Notes
+```ts
+type NFCScanResult = {
+  citizenId?: string;
+  fullName?: string;
+  dob?: string;
+  gender?: string;
+  nationality?: string;
+  permanentAddress?: string;
+  issueDate?: string;
+  issuePlace?: string;
+  expireDate?: string;
+  chipImageUri?: string;
+  chipImageMimeType?: string;
+  imageFromChipSize: number;
+  dg1Size: number;
+  dg2Size: number;
+  dg13Size: number;
+  dg14Size: number;
+  sodSize: number;
+};
+```
 
-The host app must include NFC capability and `NFCReaderUsageDescription`.
-This package links `CoreNFC` and uses `OpenSSL-Universal` by default.
+Text fields may be undefined when the chip does not provide them or the native reader cannot parse them. Dates are returned as DD/MM/YYYY strings.
 
-If the host app provides OpenSSL manually, set:
+| Field                   | Description                                                  |
+| ----------------------- | ------------------------------------------------------------ |
+| citizenId               | Citizen ID or identity number                                |
+| fullName                | Full name                                                    |
+| dob                     | Date of birth                                                |
+| gender                  | Gender                                                       |
+| nationality             | Nationality                                                  |
+| permanentAddress        | Permanent address                                            |
+| issueDate               | Issue date                                                   |
+| issuePlace              | Issuing authority or place                                   |
+| expireDate              | Expiration date                                              |
+| chipImageUri            | URI of the image written to the native cache, when available |
+| chipImageMimeType       | Image MIME type                                              |
+| imageFromChipSize       | Image size in bytes                                          |
+| dg1Size through sodSize | Size of each data group in bytes                             |
+
+On iOS, the native reader may return the chip image and chipImageUri. On Android, the image fields currently return an empty value or 0; use DG2 if the application needs to inspect image data read by the Android reader.
+
+## Errors
+
+NFCSDKError is exported for JavaScript-side validation and linking errors:
+
+```ts
+import { NFCSDKError } from 'react-native-nitro-nfc';
+
+try {
+  await NFCSDK.scan({ citizenId: 'abc' });
+} catch (error) {
+  if (error instanceof NFCSDKError) {
+    console.log(error.code); // InvalidCitizenId
+    console.log(error.message); // Invalid citizen ID
+  }
+}
+```
+
+Common progress-event error codes include:
+
+| Code               | Description                                                             |
+| ------------------ | ----------------------------------------------------------------------- |
+| InvalidCitizenId   | The input is not a valid numeric string or is shorter than 6 characters |
+| NFCNotSupported    | The device does not support NFC                                         |
+| NFCDisabled        | NFC is disabled on Android                                              |
+| UserCanceled       | The user canceled the session                                           |
+| SessionTimeout     | The NFC session timed out                                               |
+| InvalidMRZKey      | The CAN key is invalid                                                  |
+| PACEError          | PACE authentication failed                                              |
+| ConnectionError    | The connection to the chip was lost                                     |
+| NoConnectedTag     | An NFC or IsoDep chip could not be detected                             |
+| SessionInvalidated | The operating system interrupted the NFC session                        |
+| NotYetSupported    | The chip or feature is not supported yet                                |
+| Unknown            | The error could not be classified                                       |
+
+The list may expand based on the native reader and platform. Use code for stable handling logic and message for user-facing text.
+
+## Data lifecycle and privacy
+
+After a successful scan, native code retains the latest result for lazy getters. Data is kept in memory. On iOS, the chip image may also be written to a cache directory to create chipImageUri.
+
+Recommendations:
+
+- do not log NFCScanResult, DG1, DG2, DG13, DG14, or SOD in production;
+- retrieve binary data only when needed;
+- call NFCSDK.clearCachedScan() after processing;
+- obtain consent before sending data to a server;
+- do not retain chipImageUri longer than necessary.
+
+## Troubleshooting
+
+### The package is not linked
+
+Install react-native-nitro-modules, run pod install on iOS, and rebuild the native application. Reloading Metro alone is not enough for native changes.
+
+### isAvailable() returns false
+
+Check that the app is running on a physical device, the device has NFC, the package is autolinked, and the app was rebuilt after installation.
+
+### Android reports NFCDisabled
+
+Enable NFC in Settings and start the scan again.
+
+### The chip read fails or times out
+
+- remove thick cases or metal accessories;
+- place the card over the phone's NFC area;
+- keep other NFC cards away;
+- keep the card still during the complete read;
+- verify that citizenId matches the card.
+
+### NFC does not open on iOS
+
+Check the NFC capability, NFCReaderUsageDescription, entitlement configuration, and whether pod install was run after the Xcode configuration changed.
+
+## Development
 
 ```sh
-NITRO_NFC_USE_MANUAL_OPENSSL=1
+yarn install
+yarn nitrogen
+yarn prepare
+yarn typecheck
+yarn lint
+yarn test
 ```
 
-## Performance Notes
+Run the example application:
 
-`scan`, `isAvailable`, progress callback, and lazy data-group getters go through
-Nitro's JSI-based HybridObject boundary instead of the legacy React Native
-bridge/event emitter.
+```sh
+yarn example start
+yarn example android
+yarn example ios
+yarn example web
+```
 
-The total scan time is still dominated by hardware NFC I/O, PACE authentication,
-data-group reads, image extraction, and native UI flow. The main performance win
-is lower JS-thread pressure at completion: the default result no longer sends
-large Base64 strings to JavaScript. Image bytes and DG1/DG2/DG13/DG14/SOD stay
-cached in native memory/files until the app explicitly requests them.
+Run Nitrogen again after changing an *.nitro.ts file:
+
+```sh
+yarn nitrogen
+```
+
+Native code changes require rebuilding the Android or iOS application.
 
 ## Contributing
 

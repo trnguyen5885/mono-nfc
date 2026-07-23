@@ -27,7 +27,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NFCReaderUsageDescription</key>
-	<string>Ứng dụng cần quyền NFC để đọc chip CCCD gắn trên thẻ.</string>
+	<string>This app needs NFC access to read the chip on a citizen ID card.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

@@ -56,8 +56,8 @@ object Dg13Parser {
 
   fun normalizeGender(raw: String): String {
     return when (normalizeForSearch(raw)) {
-      "M", "MALE", "NAM" -> "Nam"
-      "F", "FEMALE", "NU" -> "Nữ"
+      "M", "MALE", "NAM" -> "Male"
+      "F", "FEMALE", "NU" -> "Female"
       else -> raw.trim()
     }
   }

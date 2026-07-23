@@ -62,9 +62,9 @@ enum DG13Parser {
   static func normalizeGender(_ raw: String) -> String {
     switch normalizeForSearch(raw) {
     case "M", "MALE", "NAM":
-      return "Nam"
+      return "Male"
     case "F", "FEMALE", "NU":
-      return "Nữ"
+      return "Female"
     default:
       return raw.trimmingCharacters(in: .whitespacesAndNewlines)
     }

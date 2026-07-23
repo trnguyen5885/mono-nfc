@@ -1,30 +1,30 @@
 export type NFCDataGroupName =
   'IMAGE' | 'DG1' | 'DG2' | 'DG13' | 'DG14' | 'SOD';
 
-/** Lỗi trả về từ native NFC SDK. */
+/** Error returned by the native NFC SDK. */
 export type NFCErrorEvent = {
-  /** Mã lỗi ổn định từ native. */
+  /** Stable error code returned by native code. */
   code: string;
-  /** Thông điệp lỗi hiển thị cho người dùng. */
+  /** Error message suitable for displaying to the user. */
   message: string;
 };
 
-/** Sự kiện tiến trình quét NFC. */
+/** NFC scan progress event. */
 export type NFCProgressEvent =
   | {
-      /** Phần trăm hoàn thành (0-100). */
+      /** Completion percentage (0-100). */
       progress: number;
-      /** Mô tả bước đang thực hiện. */
+      /** Description of the current step. */
       message: string;
-      /** Không có lỗi native ở event progress thường. */
+      /** A normal progress event does not contain a native error. */
       error?: undefined;
     }
   | {
-      /** Lỗi native nếu phiên quét thất bại hoặc cần người dùng thử lại. */
+      /** Native error when the scan fails or the user needs to retry. */
       error: NFCErrorEvent;
-      /** Event lỗi không kèm progress. */
+      /** An error event does not contain progress. */
       progress?: undefined;
-      /** Event lỗi không kèm message top-level. */
+      /** An error event does not contain a top-level message. */
       message?: undefined;
     };
 
@@ -32,40 +32,40 @@ export type NFCSubscription = {
   remove(): void;
 };
 
-/** Kết quả metadata nhẹ sau khi đọc CCCD qua NFC. */
+/** Lightweight metadata returned after reading a citizen ID through NFC. */
 export type NFCScanResult = {
-  /** Số CCCD. */
+  /** Citizen ID number. */
   citizenId?: string;
-  /** Họ và tên. */
+  /** Full name. */
   fullName?: string;
-  /** Ngày sinh (DD/MM/YYYY). */
+  /** Date of birth (DD/MM/YYYY). */
   dob?: string;
-  /** Giới tính (Nam/Nữ/Khác). */
+  /** Gender (Male/Female/Other). */
   gender?: string;
-  /** Quốc tịch. */
+  /** Nationality. */
   nationality?: string;
-  /** Địa chỉ thường trú. */
+  /** Permanent address. */
   permanentAddress?: string;
-  /** Ngày cấp (DD/MM/YYYY). */
+  /** Issue date (DD/MM/YYYY). */
   issueDate?: string;
-  /** Nơi cấp. */
+  /** Issuing authority/place. */
   issuePlace?: string;
-  /** Ngày hết hạn (DD/MM/YYYY). */
+  /** Expiration date (DD/MM/YYYY). */
   expireDate?: string;
-  /** URI file cache của ảnh chip, nếu native đã ghi ra cache. */
+  /** Cache file URI for the chip image, when written by native code. */
   chipImageUri?: string;
-  /** MIME type gợi ý cho ảnh chip. */
+  /** Suggested MIME type for the chip image. */
   chipImageMimeType?: string;
-  /** Kích thước ảnh chip theo byte. */
+  /** Chip image size in bytes. */
   imageFromChipSize: number;
-  /** Kích thước DG1 theo byte. */
+  /** DG1 size in bytes. */
   dg1Size: number;
-  /** Kích thước DG2 theo byte. */
+  /** DG2 size in bytes. */
   dg2Size: number;
-  /** Kích thước DG13 theo byte. */
+  /** DG13 size in bytes. */
   dg13Size: number;
-  /** Kích thước DG14 theo byte. */
+  /** DG14 size in bytes. */
   dg14Size: number;
-  /** Kích thước SOD theo byte. */
+  /** SOD size in bytes. */
   sodSize: number;
 };

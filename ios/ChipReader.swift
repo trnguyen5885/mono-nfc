@@ -44,13 +44,13 @@ enum ChipReadError: LocalizedError {
   var message: String {
     switch self {
     case .invalidCitizenId:
-      return "CCCD không hợp lệ"
+      return "Invalid citizen ID"
     case .nfcNotSupported:
-      return "Thiết bị không hỗ trợ NFC"
+      return "NFC is not supported on this device"
     case .userCanceled:
-      return "Phiên NFC đã bị hủy"
+      return "NFC session was canceled"
     case .sessionTimeout:
-      return "Phiên NFC đã hết thời gian, vui lòng thử lại"
+      return "NFC session timed out, please try again"
     case .readFailed(_, let message):
       return message
     }
@@ -86,7 +86,7 @@ final class ChipReader {
       throw ChipReadError.invalidCitizenId
     }
 
-    progressListener(10, "Đang khởi tạo NFC...")
+    progressListener(10, "Initializing NFC...")
 
     let canCode = String(cleanCitizenId.suffix(6))
     let requiredTags: [DataGroupId] = [
@@ -123,7 +123,7 @@ final class ChipReader {
         }
       )
 
-      progressListener(100, "Đọc NFC thành công")
+      progressListener(100, "NFC read completed successfully")
       return ChipReadResultMapper.mapResult(
         passport: passport,
         citizenId: cleanCitizenId

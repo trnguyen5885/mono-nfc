@@ -39,7 +39,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            android:text="Sẵn sàng quét"
+            android:text="Ready to scan"
             android:textColor="#111827"
             android:textSize="20sp"
             android:textStyle="bold" />
@@ -50,7 +50,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:gravity="center"
-            android:text="Đặt CCCD sát mặt lưng điện thoại và giữ cố định để đọc chip."
+            android:text="Place the citizen ID card against the back of the phone and keep it still."
             android:textColor="#6B7280"
             android:textSize="14sp" />
 
@@ -99,7 +99,7 @@
             android:backgroundTint="@null"
             android:elevation="0dp"
             android:stateListAnimator="@null"
-            android:text="Hủy"
+            android:text="Cancel"
             android:textAllCaps="false"
             android:textColor="#111827"
             android:textSize="16sp"
@@ -114,7 +114,7 @@
             android:backgroundTint="@null"
             android:elevation="0dp"
             android:stateListAnimator="@null"
-            android:text="Thử lại"
+            android:text="Retry"
             android:textAllCaps="false"
             android:textColor="#007AFF"
             android:textSize="16sp"

@@ -12,7 +12,6 @@ import {
 import {
   NFCSDK,
   NFCSDKError,
-  type NFCErrorEvent,
   type NFCProgressEvent,
   type NFCScanResult,
 } from 'react-native-nitro-nfc';
@@ -20,20 +19,15 @@ import {
 export default function App() {
   const [citizenId, setCitizenId] = useState('');
   const [result, setResult] = useState<NFCScanResult | null>(null);
-  const [progress, setProgress] = useState<NFCProgressEvent>({
+  const [, setProgress] = useState<NFCProgressEvent>({
     progress: 0,
-    message: 'Nhập CCCD rồi bấm nút để mở NFC',
+    message: 'Enter a citizen ID and press the button to start NFC',
   });
-  const error: NFCErrorEvent | undefined =
-    'error' in progress ? (progress.error as NFCErrorEvent) : undefined;
-
-  const available = NFCSDK.isAvailable();
-
   const handleStart = async () => {
     setResult(null);
     setProgress({
       progress: 0,
-      message: 'Đang mở màn hình NFC native...',
+      message: 'Opening the native NFC screen...',
     });
 
     try {
@@ -49,13 +43,13 @@ export default function App() {
       setResult(data);
       setProgress({
         progress: 100,
-        message: 'Đã nhận metadata NFC từ native module',
+        message: 'Received NFC metadata from the native module',
       });
     } catch (caughtError) {
       const message =
         caughtError instanceof NFCSDKError
           ? caughtError.message
-          : 'Không thể khởi động Nitro NFC.';
+          : 'Unable to start Nitro NFC.';
 
       setProgress({
         progress: -1,
@@ -72,24 +66,24 @@ export default function App() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>CCCD / Số giấy tờ</Text>
+          <Text style={styles.cardTitle}>Citizen ID / Document number</Text>
           <TextInput
             value={citizenId}
             onChangeText={setCitizenId}
-            placeholder="Nhập số CCCD"
+            placeholder="Enter citizen ID number"
             placeholderTextColor="#A0A0B0"
             keyboardType="number-pad"
             style={styles.input}
           />
 
           <Pressable style={styles.button} onPress={handleStart}>
-            <Text style={styles.buttonText}>Mở NFC</Text>
+            <Text style={styles.buttonText}>Start NFC</Text>
           </Pressable>
         </View>
 
         {result && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Thông tin CCCD</Text>
+            <Text style={styles.cardTitle}>Citizen ID information</Text>
 
             {result.chipImageUri ? (
               <Image
@@ -102,19 +96,19 @@ export default function App() {
             ) : null}
 
             {[
-              { label: 'Số CCCD', value: result.citizenId },
-              { label: 'Họ và tên', value: result.fullName },
-              { label: 'Ngày sinh', value: result.dob },
-              { label: 'Giới tính', value: result.gender },
-              { label: 'Quốc tịch', value: result.nationality },
-              { label: 'Địa chỉ', value: result.permanentAddress },
-              { label: 'Ngày cấp', value: result.issueDate },
-              { label: 'Ngày hết hạn', value: result.expireDate },
+              { label: 'Citizen ID', value: result.citizenId },
+              { label: 'Full name', value: result.fullName },
+              { label: 'Date of birth', value: result.dob },
+              { label: 'Gender', value: result.gender },
+              { label: 'Nationality', value: result.nationality },
+              { label: 'Address', value: result.permanentAddress },
+              { label: 'Issue date', value: result.issueDate },
+              { label: 'Expiration date', value: result.expireDate },
             ].map((item) => (
               <View key={item.label} style={styles.resultRow}>
                 <Text style={styles.resultKey}>{item.label}</Text>
                 <Text style={styles.resultValue} selectable>
-                  {item.value || '(trống)'}
+                  {item.value || '(empty)'}
                 </Text>
               </View>
             ))}
@@ -123,7 +117,7 @@ export default function App() {
 
         {result && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Dữ liệu chip (lazy)</Text>
+            <Text style={styles.cardTitle}>Chip data (lazy)</Text>
             <ScrollView style={styles.resultBox}>
               {[
                 { label: 'IMAGE', value: result.imageFromChipSize },
@@ -136,7 +130,7 @@ export default function App() {
                 <View key={item.label} style={styles.resultRow}>
                   <Text style={styles.resultKey}>{item.label}</Text>
                   <Text style={styles.resultValue} selectable>
-                    {item.value > 0 ? `${item.value} bytes` : '(trống)'}
+                    {item.value > 0 ? `${item.value} bytes` : '(empty)'}
                   </Text>
                 </View>
               ))}
@@ -146,8 +140,10 @@ export default function App() {
 
         {!result && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Kết quả NFC</Text>
-            <Text style={styles.resultText}>Chưa có dữ liệu từ native.</Text>
+            <Text style={styles.cardTitle}>NFC result</Text>
+            <Text style={styles.resultText}>
+              No data received from native yet.
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -301,4 +297,3 @@ const styles = StyleSheet.create({
     color: '#8C8CA1',
   },
 });
-

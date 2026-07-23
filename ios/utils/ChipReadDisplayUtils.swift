@@ -7,19 +7,19 @@ enum ChipReadDisplayUtils {
   ) -> String {
     switch message {
     case .requestPresentPassport:
-      return "Đưa mặt sau CCCD sát đỉnh iPhone và giữ cố định."
+      return "Place the back of the citizen ID card near the top of the iPhone and keep it still."
     case .authenticatingWithPassport:
-      return "Đang mở khóa chip bằng CAN... \(tracker.currentProgress)%"
+      return "Unlocking the chip with CAN... \(tracker.currentProgress)%"
     case .activeAuthentication:
-      return "Đang xác thực chip... \(tracker.currentProgress)%"
+      return "Authenticating the chip... \(tracker.currentProgress)%"
     case .readingDataGroupProgress:
-      return "Đang đọc dữ liệu từ chip... \(tracker.currentProgress)%"
+      return "Reading data from the chip... \(tracker.currentProgress)%"
     case .successfulRead:
-      return "Đọc thành công!"
+      return "Read successfully!"
     case .error(let error):
       return ChipReadErrorMapper.localizedReaderErrorMessage(error)
     default:
-      return "Vui lòng giữ CCCD cố định"
+      return "Please keep the citizen ID card still"
     }
   }
 
@@ -31,13 +31,13 @@ enum ChipReadDisplayUtils {
     switch message {
     case .authenticatingWithPassport(let progress):
       let overallProgress = tracker.progressForAuthentication(progress)
-      progressListener(overallProgress, "Đang mở khóa chip CCCD...")
+      progressListener(overallProgress, "Unlocking the citizen ID chip...")
     case .activeAuthentication:
       let overallProgress = tracker.progressForActiveAuthentication()
-      progressListener(overallProgress, "Đang xác thực chip...")
+      progressListener(overallProgress, "Authenticating the chip...")
     case .readingDataGroupProgress(let dg, let progress):
       let overallProgress = tracker.progressForDataGroup(dg, progress: progress)
-      progressListener(overallProgress, "Đang đọc dữ liệu từ chip...")
+      progressListener(overallProgress, "Reading data from the chip...")
     default:
       break
     }

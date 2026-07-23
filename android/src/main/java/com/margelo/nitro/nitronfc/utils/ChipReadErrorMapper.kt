@@ -14,7 +14,7 @@ data class ChipReadErrorPayload(
 object ChipReadErrorMapper {
 
   private const val FALLBACK_ERROR_CODE = "Unknown"
-  private const val FALLBACK_ERROR_MESSAGE = "Đọc NFC thất bại"
+  private const val FALLBACK_ERROR_MESSAGE = "NFC read failed"
 
   fun toException(error: Throwable): ChipReadException {
     val payload = toPayload(error)
@@ -39,35 +39,35 @@ object ChipReadErrorMapper {
   fun invalidCitizenId(): ChipReadErrorPayload {
     return ChipReadErrorPayload(
       code = "InvalidCitizenId",
-      message = "CCCD không hợp lệ",
+      message = "Invalid citizen ID",
     )
   }
 
   fun nfcNotSupported(): ChipReadErrorPayload {
     return ChipReadErrorPayload(
       code = "NFCNotSupported",
-      message = "Thiết bị không hỗ trợ NFC",
+      message = "NFC is not supported on this device",
     )
   }
 
   fun nfcDisabled(): ChipReadErrorPayload {
     return ChipReadErrorPayload(
       code = "NFCDisabled",
-      message = "Vui lòng bật NFC",
+      message = "Please enable NFC",
     )
   }
 
   fun userCanceled(): ChipReadErrorPayload {
     return ChipReadErrorPayload(
       code = "UserCanceled",
-      message = "Phiên NFC đã bị hủy",
+      message = "NFC session was canceled",
     )
   }
 
   private fun sessionTimeout(): ChipReadErrorPayload {
     return ChipReadErrorPayload(
       code = "SessionTimeout",
-      message = "Phiên NFC đã hết thời gian, vui lòng thử lại",
+      message = "NFC session timed out, please try again",
     )
   }
 
@@ -81,7 +81,8 @@ object ChipReadErrorMapper {
     }
 
     if (error is IllegalArgumentException &&
-      normalizedMessage.contains("citizenid")
+      (normalizedMessage.contains("citizenid") ||
+        normalizedMessage.contains("citizen id"))
     ) {
       return invalidCitizenId()
     }
@@ -93,21 +94,21 @@ object ChipReadErrorMapper {
     if (isPaceNotSupported(normalizedMessage)) {
       return ChipReadErrorPayload(
         code = "NotYetSupported",
-        message = "Chip không hỗ trợ PACE",
+        message = "The chip does not support PACE",
       )
     }
 
     if (isInvalidCan(normalizedMessage, className)) {
       return ChipReadErrorPayload(
         code = "InvalidMRZKey",
-        message = "Khóa CAN không hợp lệ",
+        message = "Invalid CAN key",
       )
     }
 
     if (isPaceFailure(normalizedMessage, className)) {
       return ChipReadErrorPayload(
         code = "PACEError",
-        message = "Xác thực PACE thất bại",
+        message = "PACE authentication failed",
       )
     }
 
@@ -118,28 +119,28 @@ object ChipReadErrorMapper {
     if (isTagLost(error, normalizedMessage, className)) {
       return ChipReadErrorPayload(
         code = "ConnectionError",
-        message = "Mất kết nối với chip NFC, vui lòng giữ CCCD cố định và thử lại",
+        message = "The NFC chip connection was lost. Keep the citizen ID card still and try again",
       )
     }
 
     if (isConnectionError(error, normalizedMessage, className)) {
       return ChipReadErrorPayload(
         code = "ConnectionError",
-        message = "Kết nối với chip NFC bị gián đoạn",
+        message = "The connection to the NFC chip was interrupted",
       )
     }
 
     if (normalizedMessage.contains("card access")) {
       return ChipReadErrorPayload(
         code = "Unknown",
-        message = "Không đọc được thông tin bảo mật của chip",
+        message = "Unable to read the chip's security information",
       )
     }
 
     if (normalizedMessage.contains("isodep")) {
       return ChipReadErrorPayload(
         code = "NoConnectedTag",
-        message = "Không nhận diện được chip IsoDep",
+        message = "IsoDep chip not detected",
       )
     }
 
@@ -156,24 +157,24 @@ object ChipReadErrorMapper {
       normalizedMessage == normalize(sessionTimeout().message) -> sessionTimeout()
       isPaceNotSupported(normalizedMessage) -> ChipReadErrorPayload(
         code = "NotYetSupported",
-        message = "Chip không hỗ trợ PACE",
+        message = "The chip does not support PACE",
       )
-      normalizedMessage == normalize("Khóa CAN không hợp lệ") -> ChipReadErrorPayload(
+      normalizedMessage == normalize("Invalid CAN key") -> ChipReadErrorPayload(
         code = "InvalidMRZKey",
-        message = "Khóa CAN không hợp lệ",
+        message = "Invalid CAN key",
       )
-      normalizedMessage == normalize("Xác thực PACE thất bại") -> ChipReadErrorPayload(
+      normalizedMessage == normalize("PACE authentication failed") -> ChipReadErrorPayload(
         code = "PACEError",
-        message = "Xác thực PACE thất bại",
+        message = "PACE authentication failed",
       )
-      normalizedMessage == normalize("Kết nối với chip NFC bị gián đoạn") ||
-        normalizedMessage == normalize("Mất kết nối với chip NFC, vui lòng giữ CCCD cố định và thử lại") -> ChipReadErrorPayload(
+      normalizedMessage == normalize("The connection to the NFC chip was interrupted") ||
+        normalizedMessage == normalize("The NFC chip connection was lost. Keep the citizen ID card still and try again") -> ChipReadErrorPayload(
           code = "ConnectionError",
           message = message,
         )
       normalizedMessage.contains("isodep") -> ChipReadErrorPayload(
         code = "NoConnectedTag",
-        message = "Không nhận diện được chip IsoDep",
+        message = "IsoDep chip not detected",
       )
       else -> ChipReadErrorPayload(
         code = FALLBACK_ERROR_CODE,
@@ -187,14 +188,14 @@ object ChipReadErrorMapper {
     className: String,
   ): Boolean {
     return normalizedMessage.contains("nfc not supported") ||
-      normalizedMessage.contains("khong ho tro nfc") ||
+      normalizedMessage.contains("nfc is not supported") ||
       (className.contains("Nfc", ignoreCase = true) &&
         normalizedMessage.contains("not supported"))
   }
 
   private fun isPaceNotSupported(normalizedMessage: String): Boolean {
-    return normalizedMessage == normalize("Chip không hỗ trợ PACE") ||
-      normalizedMessage.contains("chip khong ho tro pace") ||
+    return normalizedMessage == normalize("The chip does not support PACE") ||
+      normalizedMessage.contains("chip does not support pace") ||
       (normalizedMessage.contains("pace") &&
         normalizedMessage.contains("not support"))
   }
@@ -259,9 +260,6 @@ object ChipReadErrorMapper {
   }
 
   private fun normalize(value: String): String {
-    return value
-      .trim()
-      .lowercase(Locale.ROOT)
-      .replace('đ', 'd')
+    return value.trim().lowercase(Locale.ROOT)
   }
 }

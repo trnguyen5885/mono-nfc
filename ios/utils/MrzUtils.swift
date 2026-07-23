@@ -41,7 +41,7 @@ enum MrzUtils {
 
   static func normalizeNationality(_ raw: String) -> String {
     if raw.uppercased() == "VNM" || raw.isEmpty {
-      return "Việt Nam"
+      return "Vietnam"
     }
 
     return raw

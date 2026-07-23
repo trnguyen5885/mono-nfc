@@ -16,7 +16,7 @@ import org.jmrtd.lds.icao.DG1File
 import java.io.ByteArrayInputStream
 
 /**
- * Kết quả đọc chip CCCD.
+ * Result of reading the citizen ID chip.
  */
 data class ChipReadResult(
   val citizenId: String,
@@ -38,22 +38,22 @@ data class ChipReadResult(
 )
 
 /**
- * Listener nhận cập nhật tiến trình đọc chip.
+ * Listener for chip-reading progress updates.
  */
 fun interface ChipReadProgressListener {
   fun onProgress(progress: Int, message: String)
 }
 
 /**
- * Core logic đọc chip NFC trên CCCD.
+ * Core logic for reading an NFC chip from a citizen ID card.
  *
- * Luồng xử lý:
- * 1. Mở IsoDep connection
- * 2. Xác thực PACE (CAN = 6 số cuối CCCD)
- * 3. Đọc DG1 (MRZ) → thông tin cá nhân
- * 4. Đọc DG13 → thông tin mở rộng (đặc thù VN)
- * 5. Đọc DG14 + SOD → security data
- * 6. Trả về [ChipReadResult]
+ * Processing flow:
+ * 1. Open the IsoDep connection
+ * 2. Authenticate with PACE (CAN = the last 6 digits of the citizen ID)
+ * 3. Read DG1 (MRZ) for personal information
+ * 4. Read DG13 for Vietnam-specific extended information
+ * 5. Read DG14 and SOD security data
+ * 6. Return [ChipReadResult]
  */
 object ChipReader {
 
@@ -61,13 +61,13 @@ object ChipReader {
   private const val ISO_DEP_TIMEOUT = 30_000
 
   /**
-   * Đọc toàn bộ dữ liệu từ chip CCCD.
+   * Read all available data from the citizen ID chip.
    *
-   * @param tag NFC tag nhận được từ foreground dispatch
-   * @param citizenId Số CCCD (>= 6 ký tự)
-   * @param progressListener Callback cập nhật tiến trình
-   * @return [ChipReadResult] chứa toàn bộ dữ liệu đã parse
-   * @throws ChipReadException nếu xảy ra lỗi trong quá trình đọc
+   * @param tag NFC tag received from the foreground reader
+   * @param citizenId Citizen ID number (>= 6 characters)
+   * @param progressListener Progress update callback
+   * @return [ChipReadResult] containing all parsed data
+   * @throws ChipReadException when reading fails
    */
   fun read(
     tag: Tag,
@@ -76,7 +76,7 @@ object ChipReader {
   ): ChipReadResult {
     val cleanCitizenId = citizenId.trim()
     if (cleanCitizenId.length < 6) {
-      throw ChipReadException("CCCD không hợp lệ")
+      throw ChipReadException("Invalid citizen ID")
     }
 
     var isoDep: IsoDep? = null
@@ -84,10 +84,10 @@ object ChipReader {
     var passportService: PassportService? = null
 
     try {
-      progressListener.onProgress(10, "Đang kết nối chip...")
+      progressListener.onProgress(10, "Connecting to the chip...")
 
       isoDep = IsoDep.get(tag)
-        ?: throw ChipReadException("Không nhận diện được chip IsoDep")
+        ?: throw ChipReadException("IsoDep chip not detected")
 
       isoDep.timeout = ISO_DEP_TIMEOUT
       cardService = CardService.getInstance(isoDep)
@@ -104,10 +104,10 @@ object ChipReader {
 
       // PACE authentication
       val canCode = cleanCitizenId.takeLast(6)
-      progressListener.onProgress(20, "Đang xác thực chip...")
+      progressListener.onProgress(20, "Authenticating the chip...")
 
       val paceInfo = readPaceInfo(passportService)
-        ?: throw ChipReadException("Chip không hỗ trợ PACE")
+        ?: throw ChipReadException("The chip does not support PACE")
 
       passportService.doPACE(
         PACEKeySpec.createCANKey(canCode),
@@ -118,7 +118,7 @@ object ChipReader {
       passportService.sendSelectApplet(true)
 
       // DG1 — MRZ
-      progressListener.onProgress(40, "Đang đọc dữ liệu từ chip...")
+      progressListener.onProgress(40, "Reading data from the chip...")
       val dg1Bytes = passportService
         .getInputStream(PassportService.EF_DG1)
         .readBytes()
@@ -140,7 +140,7 @@ object ChipReader {
       var dg13Bytes = ByteArray(0)
       var parsedDg13 = Dg13ParsedData()
       try {
-        progressListener.onProgress(60, "Đang đọc dữ liệu từ chip...")
+        progressListener.onProgress(60, "Reading data from the chip...")
         dg13Bytes = passportService
           .getInputStream(PassportService.EF_DG13)
           .readBytes()
@@ -162,7 +162,7 @@ object ChipReader {
         passportService, PassportService.EF_SOD, 80, "SOD", progressListener,
       )
 
-      progressListener.onProgress(100, "Đọc NFC thành công")
+      progressListener.onProgress(100, "NFC read completed successfully")
 
       return ChipReadResult(
         citizenId = cleanCitizenId,
@@ -208,7 +208,7 @@ object ChipReader {
     progressListener: ChipReadProgressListener,
   ): ByteArray {
     return try {
-      progressListener.onProgress(progress, "Đang đọc dữ liệu từ chip...")
+      progressListener.onProgress(progress, "Reading data from the chip...")
       passportService.getInputStream(fileId).readBytes()
     } catch (e: Exception) {
       Log.e(TAG, "$label read failed", e)
@@ -225,7 +225,7 @@ object ChipReader {
 }
 
 /**
- * Exception đặc thù cho lỗi đọc chip NFC.
+ * Exception specific to NFC chip-reading failures.
  */
 class ChipReadException(
   message: String,
