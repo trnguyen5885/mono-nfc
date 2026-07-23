@@ -1,6 +1,6 @@
 # react-native-nitro-nfc
 
-A React Native Nitro Module for reading NFC chip data from Vietnamese citizen ID cards and other electronic documents compatible with electronic passport standards.
+A React Native Nitro NFC for reading NFC chip data from Vietnamese citizen ID cards and other electronic documents compatible with electronic passport standards.
 
 ## Introduction
 
