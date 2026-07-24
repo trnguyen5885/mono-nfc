@@ -63,9 +63,9 @@ namespace margelo::nitro::nitronfc {
     auto __result = method(_javaPart);
     return static_cast<bool>(__result);
   }
-  std::shared_ptr<Promise<NitroNfcScanResult>> JHybridNitroNfcSpec::scan(const std::string& citizenId, const std::function<void(const NFCProgressPayload& /* event */)>& onProgress) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* citizenId */, jni::alias_ref<JFunc_void_NFCProgressPayload::javaobject> /* onProgress */)>("scan_cxx");
-    auto __result = method(_javaPart, jni::make_jstring(citizenId), JFunc_void_NFCProgressPayload_cxx::fromCpp(onProgress));
+  std::shared_ptr<Promise<NitroNfcScanResult>> JHybridNitroNfcSpec::scan(const std::string& citizenId, bool readImage, const std::string& cachePolicy, const std::string& language, const std::function<void(const NFCProgressPayload& /* event */)>& onProgress) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* citizenId */, jboolean /* readImage */, jni::alias_ref<jni::JString> /* cachePolicy */, jni::alias_ref<jni::JString> /* language */, jni::alias_ref<JFunc_void_NFCProgressPayload::javaobject> /* onProgress */)>("scan_cxx");
+    auto __result = method(_javaPart, jni::make_jstring(citizenId), readImage, jni::make_jstring(cachePolicy), jni::make_jstring(language), JFunc_void_NFCProgressPayload_cxx::fromCpp(onProgress));
     return [&]() {
       auto __promise = Promise<NitroNfcScanResult>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {

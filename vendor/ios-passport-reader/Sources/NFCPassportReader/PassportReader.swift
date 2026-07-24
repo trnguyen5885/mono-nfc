@@ -29,6 +29,7 @@ public class PassportReader : NSObject {
     private var skipCA = false
     private var skipPACE = false
     private var useExtendedMode = false
+    private var shouldSkipDataGroup: ((DataGroupId, NFCPassportModel) -> Bool)?
 
     private var bacHandler : BACHandler?
     private var caHandler : ChipAuthenticationHandler?
@@ -63,13 +64,14 @@ public class PassportReader : NSObject {
         dataAmountToReadOverride = amount
     }
     
-    public func readPassport( canKey : String, tags : [DataGroupId] = [], skipSecureElements : Bool = true, skipCA : Bool = false, skipPACE : Bool = false, useExtendedMode : Bool = false, customDisplayMessage : ((NFCViewDisplayMessage) -> String?)? = nil) async throws -> NFCPassportModel {
+    public func readPassport( canKey : String, tags : [DataGroupId] = [], skipSecureElements : Bool = true, skipCA : Bool = false, skipPACE : Bool = false, useExtendedMode : Bool = false, shouldSkipDataGroup : ((DataGroupId, NFCPassportModel) -> Bool)? = nil, customDisplayMessage : ((NFCViewDisplayMessage) -> String?)? = nil) async throws -> NFCPassportModel {
         
         self.passport = NFCPassportModel()
         self.canKey = canKey
         self.skipCA = skipCA
         self.skipPACE = skipPACE
         self.useExtendedMode = useExtendedMode
+        self.shouldSkipDataGroup = shouldSkipDataGroup
         
         self.dataGroupsToRead.removeAll()
         self.dataGroupsToRead.append( contentsOf:tags)
@@ -318,6 +320,10 @@ extension PassportReader {
             DGsToRead = DGsToRead.filter { dataGroupsToRead.contains($0) }
         }
         for dgId in DGsToRead {
+            if shouldSkipDataGroup?(dgId, self.passport) == true {
+                continue
+            }
+
             self.updateReaderSessionMessage( alertMessage: NFCViewDisplayMessage.readingDataGroupProgress(dgId, 0) )
             if let dg = try await readDataGroup(tagReader:tagReader, dgId:dgId) {
                 self.passport.addDataGroup( dgId, dataGroup:dg )

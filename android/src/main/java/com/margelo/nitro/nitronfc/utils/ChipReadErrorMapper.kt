@@ -36,6 +36,30 @@ object ChipReadErrorMapper {
       ?: ChipReadErrorPayload(FALLBACK_ERROR_CODE, FALLBACK_ERROR_MESSAGE)
   }
 
+  fun toPayload(error: Throwable, language: String): ChipReadErrorPayload {
+    return localize(toPayload(error), language)
+  }
+
+  fun localize(error: ChipReadErrorPayload, language: String): ChipReadErrorPayload {
+    if (!language.equals("vi", ignoreCase = true)) return error
+
+    val message = when (error.code) {
+      "InvalidCitizenId" -> "Số căn cước công dân không hợp lệ"
+      "NFCNotSupported" -> "Thiết bị này không hỗ trợ NFC"
+      "NFCDisabled" -> "Vui lòng bật NFC"
+      "UserCanceled" -> "Phiên NFC đã bị hủy"
+      "SessionTimeout" -> "Phiên NFC đã hết thời gian, vui lòng thử lại"
+      "NotYetSupported" -> "Chip không hỗ trợ PACE"
+      "InvalidMRZKey" -> "Mã CAN không hợp lệ"
+      "PACEError" -> "Xác thực PACE thất bại"
+      "NoConnectedTag" -> "Không phát hiện chip IsoDep"
+      "ConnectionError" -> "Kết nối với chip NFC bị gián đoạn"
+      else -> "Không thể đọc dữ liệu từ chip NFC"
+    }
+
+    return error.copy(message = message)
+  }
+
   fun invalidCitizenId(): ChipReadErrorPayload {
     return ChipReadErrorPayload(
       code = "InvalidCitizenId",

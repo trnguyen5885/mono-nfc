@@ -1,6 +1,11 @@
 export type NFCDataGroupName =
   'IMAGE' | 'DG1' | 'DG2' | 'DG13' | 'DG14' | 'SOD';
 
+export type NFCScanCachePolicy = 'fresh' | 'reuse-if-valid';
+
+/** Language used by the native NFC progress screen and messages. */
+export type NFCLanguage = 'en' | 'vi';
+
 /** Error returned by the native NFC SDK. */
 export type NFCErrorEvent = {
   /** Stable error code returned by native code. */

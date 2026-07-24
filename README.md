@@ -107,6 +107,7 @@ async function readCitizenCard(citizenId: string) {
   try {
     const result = await NFCSDK.scan({
       citizenId,
+      language: 'vi',
       onProgress: (event) => {
         if ('error' in event) {
           console.warn('[NFC error]', event.error.code, event.error.message);
@@ -157,6 +158,9 @@ Starts an NFC reading session and resolves with the result after a successful re
 ```ts
 type ScanOptions = {
   citizenId: string;
+  readImage?: boolean;
+  cachePolicy?: 'fresh' | 'reuse-if-valid';
+  language?: 'en' | 'vi';
   onProgress?: (event: NFCProgressEvent) => void;
 };
 
@@ -171,6 +175,55 @@ The method:
 - rejects when the user cancels, NFC is unavailable, authentication fails, or reading fails;
 - does not allow concurrent native scan sessions.
 
+`readImage` defaults to `true`. Set it to `false` when the caller only needs
+text metadata. This skips the large DG2 transfer and can significantly reduce
+the NFC reading time; image fields and the `IMAGE` data-group getter will be
+empty for that scan.
+
+`cachePolicy` defaults to `fresh`. Set it to `reuse-if-valid` to reuse DG2
+from a short-lived native cache when the current DG1 and SOD produce the same
+SHA-256 fingerprint. DG1 and SOD are still read from the chip on every scan;
+only the matching DG2 transfer is skipped.
+The cache expires after five minutes and is cleared by
+`NFCSDK.clearCachedScan()`.
+
+`language` controls the native NFC screen, progress messages, and user-facing
+native errors. It defaults to `'en'`. Set it to `'vi'` to display the native
+UI in Vietnamese. Error codes remain stable across languages.
+
+Supported values:
+
+- `'en'` — English (default)
+- `'vi'` — Vietnamese
+
+The language option applies to the native bottom sheet on Android and the
+custom NFC messages on iOS, including card instructions, authentication and
+data-reading progress, success messages, retry/cancel controls, and mapped
+chip-reading errors. It does not change the language of the operating system's
+own NFC permission or system alerts.
+
+Example with Vietnamese UI and progress handling:
+
+```tsx
+const result = await NFCSDK.scan({
+  citizenId: '001234567890',
+  language: 'vi',
+  onProgress: (event) => {
+    if ('error' in event) {
+      console.warn(event.error.code, event.error.message);
+      return;
+    }
+
+    console.log(`${event.progress}%`, event.message);
+  },
+});
+```
+
+Any value other than `'vi'` is treated as English by the native layer. Error
+codes such as `InvalidMRZKey`, `PACEError`, `ConnectionError`, and
+`UserCanceled` remain unchanged, so applications can handle errors without
+depending on the selected display language.
+
 An error progress event may be delivered before the Promise is rejected.
 
 ### NFCSDK.startScan(options): void
@@ -180,6 +233,7 @@ Starts a fire-and-forget scan.
 ```ts
 NFCSDK.startScan({
   citizenId: '001234567890',
+  language: 'vi',
 });
 ```
 
@@ -271,7 +325,7 @@ Supported public names:
 
 | Name  | Contents                                      |
 | ----- | --------------------------------------------- |
-| IMAGE | Image extracted from the chip, when available |
+| IMAGE | Encoded face image extracted from DG2, when available |
 | DG1   | Basic MRZ and identity data                   |
 | DG2   | Face image or related image data              |
 | DG13  | Extended document data                        |
@@ -342,7 +396,7 @@ Text fields may be undefined when the chip does not provide them or the native r
 | imageFromChipSize       | Image size in bytes                                          |
 | dg1Size through sodSize | Size of each data group in bytes                             |
 
-On iOS, the native reader may return the chip image and chipImageUri. On Android, the image fields currently return an empty value or 0; use DG2 if the application needs to inspect image data read by the Android reader.
+Both iOS and Android extract the first encoded face image from DG2 when the card provides one. `chipImageUri` points to a temporary native cache file, while `getDataGroupBuffer('IMAGE')` returns the encoded image bytes. The MIME type may be `image/jpeg` or `image/jp2` depending on the card and platform capabilities.
 
 ## Errors
 
@@ -382,7 +436,7 @@ The list may expand based on the native reader and platform. Use code for stable
 
 ## Data lifecycle and privacy
 
-After a successful scan, native code retains the latest result for lazy getters. Data is kept in memory. On iOS, the chip image may also be written to a cache directory to create chipImageUri.
+After a successful scan, native code retains the latest result for lazy getters. Data is kept in memory, and the encoded chip image is also written to a temporary cache file when available so `chipImageUri` can be used directly by native image components. With `cachePolicy: 'reuse-if-valid'`, one matching DG1/SOD-keyed DG2 entry is retained in native memory for up to five minutes. Starting a new scan removes the previous URI file; `NFCSDK.clearCachedScan()` removes both the active result and the fingerprint cache.
 
 Recommendations:
 

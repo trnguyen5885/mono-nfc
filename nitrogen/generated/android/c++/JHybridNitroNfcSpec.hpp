@@ -55,7 +55,7 @@ namespace margelo::nitro::nitronfc {
   public:
     // Methods
     bool isAvailable() override;
-    std::shared_ptr<Promise<NitroNfcScanResult>> scan(const std::string& citizenId, const std::function<void(const NFCProgressPayload& /* event */)>& onProgress) override;
+    std::shared_ptr<Promise<NitroNfcScanResult>> scan(const std::string& citizenId, bool readImage, const std::string& cachePolicy, const std::string& language, const std::function<void(const NFCProgressPayload& /* event */)>& onProgress) override;
     std::shared_ptr<ArrayBuffer> getDataGroupBuffer(const std::string& name) override;
     std::string getDataGroupBase64(const std::string& name) override;
     void clearCachedScan() override;

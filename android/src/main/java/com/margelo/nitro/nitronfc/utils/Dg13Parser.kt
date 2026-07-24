@@ -8,22 +8,22 @@ import java.util.Date
 import java.util.Locale
 
 data class Dg13ParsedData(
-  val fullName: String = "",
-  val gender: String = "",
-  val permanentAddress: String = "",
-  val issueDate: String = "",
-  val issuePlace: String = "",
-  val expireDate: String = "",
-  val fieldMap: Map<Int, List<String>> = emptyMap(),
+        val fullName: String = "",
+        val gender: String = "",
+        val permanentAddress: String = "",
+        val issueDate: String = "",
+        val issuePlace: String = "",
+        val expireDate: String = "",
+        val fieldMap: Map<Int, List<String>> = emptyMap(),
 )
 
 private data class Asn1Node(
-  val tagClass: Int,
-  val tagNumber: Int,
-  val constructed: Boolean,
-  val valueOffset: Int,
-  val valueLength: Int,
-  val nextOffset: Int,
+        val tagClass: Int,
+        val tagNumber: Int,
+        val constructed: Boolean,
+        val valueOffset: Int,
+        val valueLength: Int,
+        val nextOffset: Int,
 )
 
 object Dg13Parser {
@@ -31,33 +31,34 @@ object Dg13Parser {
   private const val TAG_CLASS_APPLICATION = 1
 
   fun parse(
-    dg13Bytes: ByteArray,
-    fallbackIssuePlace: String = "",
+          dg13Bytes: ByteArray,
+          fallbackIssuePlace: String = "",
   ): Dg13ParsedData {
     if (dg13Bytes.isEmpty()) {
       return Dg13ParsedData(issuePlace = fallbackIssuePlace)
     }
 
-    val fields = parseStructuredFields(dg13Bytes)
-      ?: return Dg13ParsedData(issuePlace = fallbackIssuePlace)
+    val fields =
+            parseStructuredFields(dg13Bytes)
+                    ?: return Dg13ParsedData(issuePlace = fallbackIssuePlace)
 
     val candidates = fields.values.flatten().distinct()
 
     return Dg13ParsedData(
-      fullName = findFullName(fields),
-      gender = normalizeGender(fields[0x04]?.firstOrNull().orEmpty()),
-      permanentAddress = fields[0x09]?.firstOrNull().orEmpty(),
-      issueDate = normalizeDate(fields[0x0B]?.firstOrNull().orEmpty()),
-      issuePlace = findIssuePlace(candidates) ?: fallbackIssuePlace,
-      expireDate = normalizeDate(fields[0x0C]?.firstOrNull().orEmpty()),
-      fieldMap = fields,
+            fullName = findFullName(fields),
+            gender = normalizeGender(fields[0x04]?.firstOrNull().orEmpty()),
+            permanentAddress = fields[0x09]?.firstOrNull().orEmpty(),
+            issueDate = normalizeDate(fields[0x0B]?.firstOrNull().orEmpty()),
+            issuePlace = findIssuePlace(candidates) ?: fallbackIssuePlace,
+            expireDate = normalizeDate(fields[0x0C]?.firstOrNull().orEmpty()),
+            fieldMap = fields,
     )
   }
 
   fun normalizeGender(raw: String): String {
     return when (normalizeForSearch(raw)) {
-      "M", "MALE", "NAM" -> "Male"
-      "F", "FEMALE", "NU" -> "Female"
+      "M", "MALE", "NAM" -> "Nam"
+      "F", "FEMALE", "NU" -> "Nữ"
       else -> raw.trim()
     }
   }
@@ -71,9 +72,11 @@ object Dg13Parser {
     val rootChildren = parseChildren(bytes, root)
     val sequenceNode = rootChildren.firstOrNull() ?: return null
     val sequenceChildren = parseChildren(bytes, sequenceNode)
-    val setNode = sequenceChildren.firstOrNull {
-      it.tagClass == TAG_CLASS_UNIVERSAL && it.tagNumber == 17
-    } ?: return null
+    val setNode =
+            sequenceChildren.firstOrNull {
+              it.tagClass == TAG_CLASS_UNIVERSAL && it.tagNumber == 17
+            }
+                    ?: return null
 
     val fieldNodes = parseChildren(bytes, setNode)
     if (fieldNodes.isEmpty()) {
@@ -87,16 +90,15 @@ object Dg13Parser {
       }
 
       val parts = parseChildren(bytes, fieldNode)
-      val indexNode = parts.firstOrNull {
-        it.tagClass == TAG_CLASS_UNIVERSAL && it.tagNumber == 2
-      } ?: return@forEach
+      val indexNode =
+              parts.firstOrNull { it.tagClass == TAG_CLASS_UNIVERSAL && it.tagNumber == 2 }
+                      ?: return@forEach
 
       val index = parseInteger(bytes, indexNode) ?: return@forEach
-      val values = parts
-        .drop(1)
-        .flatMap { extractStrings(bytes, it) }
-        .map(::cleanValue)
-        .filter { it.isNotBlank() }
+      val values =
+              parts.drop(1).flatMap { extractStrings(bytes, it) }.map(::cleanValue).filter {
+                it.isNotBlank()
+              }
 
       if (values.isNotEmpty()) {
         result[index] = values
@@ -160,21 +162,19 @@ object Dg13Parser {
     cursor += 1
 
     val valueLength =
-      if ((lengthByte and 0x80) == 0) {
-        lengthByte
-      } else {
-        val count = lengthByte and 0x7F
-        if (count == 0 || count > 4 || cursor + count > bytes.size) {
-          return null
-        }
+            if ((lengthByte and 0x80) == 0) {
+              lengthByte
+            } else {
+              val count = lengthByte and 0x7F
+              if (count == 0 || count > 4 || cursor + count > bytes.size) {
+                return null
+              }
 
-        var length = 0
-        repeat(count) {
-          length = (length shl 8) or (bytes[cursor + it].toInt() and 0xFF)
-        }
-        cursor += count
-        length
-      }
+              var length = 0
+              repeat(count) { length = (length shl 8) or (bytes[cursor + it].toInt() and 0xFF) }
+              cursor += count
+              length
+            }
 
     val nextOffset = cursor + valueLength
     if (nextOffset > bytes.size) {
@@ -182,12 +182,12 @@ object Dg13Parser {
     }
 
     return Asn1Node(
-      tagClass = tagClass,
-      tagNumber = tagNumber,
-      constructed = constructed,
-      valueOffset = cursor,
-      valueLength = valueLength,
-      nextOffset = nextOffset,
+            tagClass = tagClass,
+            tagNumber = tagNumber,
+            constructed = constructed,
+            valueOffset = cursor,
+            valueLength = valueLength,
+            nextOffset = nextOffset,
     )
   }
 
@@ -205,9 +205,7 @@ object Dg13Parser {
 
   private fun extractStrings(bytes: ByteArray, node: Asn1Node): List<String> {
     if (node.constructed) {
-      return parseChildren(bytes, node).flatMap { child ->
-        extractStrings(bytes, child)
-      }
+      return parseChildren(bytes, node).flatMap { child -> extractStrings(bytes, child) }
     }
 
     if (node.tagClass != TAG_CLASS_UNIVERSAL) {
@@ -215,11 +213,12 @@ object Dg13Parser {
     }
 
     val value = bytes.copyOfRange(node.valueOffset, node.nextOffset)
-    val decoded = when (node.tagNumber) {
-      12, 19, 20, 22 -> decodeString(value, Charsets.UTF_8)
-      30 -> decodeString(value, Charsets.UTF_16BE)
-      else -> ""
-    }
+    val decoded =
+            when (node.tagNumber) {
+              12, 19, 20, 22 -> decodeString(value, Charsets.UTF_8)
+              30 -> decodeString(value, Charsets.UTF_16BE)
+              else -> ""
+            }
 
     return decoded.takeIf { it.isNotBlank() }?.let(::listOf) ?: emptyList()
   }
@@ -234,19 +233,19 @@ object Dg13Parser {
 
   private fun normalizeForSearch(raw: String): String {
     return Normalizer.normalize(raw, Normalizer.Form.NFD)
-      .replace(Regex("""\p{M}+"""), "")
-      .uppercase(Locale.ROOT)
-      .trim()
+            .replace(Regex("""\p{M}+"""), "")
+            .uppercase(Locale.ROOT)
+            .trim()
   }
 
   private fun findFullName(fields: Map<Int, List<String>>): String {
     val preferredIndexes = listOf(0x02, 0x03, 0x01)
 
     return preferredIndexes
-      .flatMap { fields[it].orEmpty() }
-      .map(::cleanValue)
-      .firstOrNull(::isLikelyFullName)
-      .orEmpty()
+            .flatMap { fields[it].orEmpty() }
+            .map(::cleanValue)
+            .firstOrNull(::isLikelyFullName)
+            .orEmpty()
   }
 
   private fun isLikelyFullName(value: String): Boolean {
@@ -266,20 +265,21 @@ object Dg13Parser {
 
   private fun looksLikeAddressOrIssuer(normalized: String): Boolean {
     return listOf(
-      "CONG AN",
-      "CANH SAT",
-      "CUC TRUONG",
-      "TINH ",
-      "THANH PHO",
-      "HUYEN ",
-      "QUAN ",
-      "PHUONG ",
-      "XA ",
-      "THI TRAN",
-      "DUONG ",
-      "THON ",
-      "AP ",
-    ).any(normalized::contains)
+                    "CONG AN",
+                    "CANH SAT",
+                    "CUC TRUONG",
+                    "TINH ",
+                    "THANH PHO",
+                    "HUYEN ",
+                    "QUAN ",
+                    "PHUONG ",
+                    "XA ",
+                    "THI TRAN",
+                    "DUONG ",
+                    "THON ",
+                    "AP ",
+            )
+            .any(normalized::contains)
   }
 
   private fun findIssuePlace(candidates: List<String>): String? {
@@ -298,26 +298,21 @@ object Dg13Parser {
     val clean = raw.trim()
     for (pattern in DATE_PATTERNS) {
       try {
-        return SimpleDateFormat(pattern, Locale.ROOT).apply {
-          isLenient = false
-        }.parse(clean)
-      } catch (_: ParseException) {
-      }
+        return SimpleDateFormat(pattern, Locale.ROOT).apply { isLenient = false }.parse(clean)
+      } catch (_: ParseException) {}
     }
 
     return null
   }
 
   private val OUTPUT_DATE_FORMAT =
-    SimpleDateFormat("dd/MM/yyyy", Locale.ROOT).apply {
-      isLenient = false
-    }
+          SimpleDateFormat("dd/MM/yyyy", Locale.ROOT).apply { isLenient = false }
 
   private val DATE_PATTERNS =
-    listOf(
-      "dd/MM/yyyy",
-      "yyyy-MM-dd",
-      "ddMMyyyy",
-      "yyyyMMdd",
-    )
+          listOf(
+                  "dd/MM/yyyy",
+                  "yyyy-MM-dd",
+                  "ddMMyyyy",
+                  "yyyyMMdd",
+          )
 }

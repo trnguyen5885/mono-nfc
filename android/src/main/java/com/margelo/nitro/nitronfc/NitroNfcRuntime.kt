@@ -2,6 +2,7 @@ package com.margelo.nitro.nitronfc
 
 import android.content.Intent
 import android.nfc.NfcAdapter
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
@@ -11,12 +12,18 @@ import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.ArrayBuffer
 import com.margelo.nitro.core.Promise
 import com.margelo.nitro.nitronfc.utils.ChipReadErrorPayload
+import com.margelo.nitro.nitronfc.utils.NfcUiText
+import java.io.File
 import java.util.Locale
 
 object NitroNfcRuntime {
   const val EXTRA_DOCUMENT_NUMBER = "com.margelo.nitro.nitronfc.DOCUMENT_NUMBER"
+  const val EXTRA_READ_IMAGE = "com.margelo.nitro.nitronfc.READ_IMAGE"
+  const val EXTRA_CACHE_POLICY = "com.margelo.nitro.nitronfc.CACHE_POLICY"
+  const val EXTRA_LANGUAGE = "com.margelo.nitro.nitronfc.LANGUAGE"
 
   private const val TAG = "NitroNfc"
+  private const val CHIP_IMAGE_CACHE_DIRECTORY = "nitro-nfc"
   private val lock = Any()
   private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -35,6 +42,9 @@ object NitroNfcRuntime {
 
   fun scan(
     citizenId: String,
+    readImage: Boolean,
+    cachePolicy: String,
+    language: String,
     onProgress: (event: NFCProgressPayload) -> Unit,
   ): Promise<NitroNfcScanResult> {
     val cleanCitizenId = citizenId.trim()
@@ -49,6 +59,10 @@ object NitroNfcRuntime {
       return Promise.rejected(IllegalStateException("NFC scan is already open"))
     }
 
+    // A new scan supersedes the previous result. Remove the previous image
+    // before opening a new NFC session so stale biometric data is not retained.
+    clearActiveScan()
+
     val promise = Promise<NitroNfcScanResult>()
     synchronized(lock) {
       if (pendingPromise != null) {
@@ -62,8 +76,8 @@ object NitroNfcRuntime {
     }
 
     return try {
-      startActivity(context, cleanCitizenId)
-      emitProgress(0, "Opening the native NFC screen...")
+      startActivity(context, cleanCitizenId, readImage, cachePolicy, language)
+      emitProgress(0, NfcUiText(language).openingNativeScreen)
       promise
     } catch (error: Throwable) {
       rejectPending(error)
@@ -137,15 +151,30 @@ object NitroNfcRuntime {
   }
 
   fun clearCachedScan() {
+    clearActiveScan()
+    Dg2Cache.clear()
+  }
+
+  private fun clearActiveScan() {
     synchronized(lock) {
       lastResult = null
     }
+    deleteChipImageCache()
   }
 
-  private fun startActivity(context: ReactApplicationContext, citizenId: String) {
+  private fun startActivity(
+    context: ReactApplicationContext,
+    citizenId: String,
+    readImage: Boolean,
+    cachePolicy: String,
+    language: String,
+  ) {
     val activity = context.currentActivity
     val intent = Intent(activity ?: context, NFCScanActivity::class.java)
       .putExtra(EXTRA_DOCUMENT_NUMBER, citizenId)
+      .putExtra(EXTRA_READ_IMAGE, readImage)
+      .putExtra(EXTRA_CACHE_POLICY, cachePolicy)
+      .putExtra(EXTRA_LANGUAGE, language)
       .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
       .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
 
@@ -214,14 +243,50 @@ object NitroNfcRuntime {
       issueDate = issueDate,
       issuePlace = issuePlace,
       expireDate = expireDate,
-      chipImageUri = "",
-      chipImageMimeType = "",
-      imageFromChipSize = 0.0,
+      chipImageUri = writeChipImage(imageFromChipBytes, chipImageMimeType),
+      chipImageMimeType = chipImageMimeType,
+      imageFromChipSize = imageFromChipBytes.size.toDouble(),
       dg1Size = dg1Bytes.size.toDouble(),
       dg2Size = dg2Bytes.size.toDouble(),
       dg13Size = dg13Bytes.size.toDouble(),
       dg14Size = dg14Bytes.size.toDouble(),
       sodSize = sodBytes.size.toDouble(),
     )
+  }
+
+  private fun writeChipImage(bytes: ByteArray, mimeType: String): String {
+    if (bytes.isEmpty()) return ""
+
+    val context = NitroModules.applicationContext ?: return ""
+    return try {
+      val directory = File(context.cacheDir, CHIP_IMAGE_CACHE_DIRECTORY)
+      if (!directory.exists() && !directory.mkdirs()) {
+        Log.w(TAG, "Unable to create the chip image cache directory")
+        return ""
+      }
+
+      val extension = when (mimeType.trim().lowercase(Locale.US)) {
+        "image/jpeg", "image/jpg" -> "jpg"
+        "image/jp2", "image/jpeg2000" -> "jp2"
+        else -> "bin"
+      }
+      val file = File.createTempFile("chip-image-", ".$extension", directory)
+      file.outputStream().use { output ->
+        output.write(bytes)
+      }
+      Uri.fromFile(file).toString()
+    } catch (error: Exception) {
+      Log.w(TAG, "Unable to cache the chip image", error)
+      ""
+    }
+  }
+
+  private fun deleteChipImageCache() {
+    val context = NitroModules.applicationContext ?: return
+    try {
+      File(context.cacheDir, CHIP_IMAGE_CACHE_DIRECTORY).deleteRecursively()
+    } catch (error: Exception) {
+      Log.w(TAG, "Unable to clear the chip image cache", error)
+    }
   }
 }

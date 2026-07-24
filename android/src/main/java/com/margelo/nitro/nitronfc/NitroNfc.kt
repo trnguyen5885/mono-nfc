@@ -12,9 +12,12 @@ class NitroNfc : HybridNitroNfcSpec() {
 
   override fun scan(
     citizenId: String,
+    readImage: Boolean,
+    cachePolicy: String,
+    language: String,
     onProgress: (event: NFCProgressPayload) -> Unit,
   ): Promise<NitroNfcScanResult> {
-    return NitroNfcRuntime.scan(citizenId, onProgress)
+    return NitroNfcRuntime.scan(citizenId, readImage, cachePolicy, language, onProgress)
   }
 
   override fun getDataGroupBuffer(name: String): ArrayBuffer {

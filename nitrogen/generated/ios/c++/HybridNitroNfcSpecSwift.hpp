@@ -85,8 +85,8 @@ namespace margelo::nitro::nitronfc {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline std::shared_ptr<Promise<NitroNfcScanResult>> scan(const std::string& citizenId, const std::function<void(const NFCProgressPayload& /* event */)>& onProgress) override {
-      auto __result = _swiftPart.scan(citizenId, onProgress);
+    inline std::shared_ptr<Promise<NitroNfcScanResult>> scan(const std::string& citizenId, bool readImage, const std::string& cachePolicy, const std::string& language, const std::function<void(const NFCProgressPayload& /* event */)>& onProgress) override {
+      auto __result = _swiftPart.scan(citizenId, std::forward<decltype(readImage)>(readImage), cachePolicy, language, onProgress);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

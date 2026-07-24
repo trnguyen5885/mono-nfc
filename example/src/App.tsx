@@ -33,6 +33,9 @@ export default function App() {
     try {
       const data = await NFCSDK.scan({
         citizenId,
+        readImage: true,
+        cachePolicy: 'reuse-if-valid',
+        language: 'vi',
         onProgress: (event) => {
           console.log('[NitroNfc] Progress:', event);
           setProgress(event);

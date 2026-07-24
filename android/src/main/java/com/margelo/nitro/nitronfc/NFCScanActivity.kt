@@ -22,13 +22,12 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.margelo.nitro.nitronfc.utils.ChipReadErrorMapper
 import com.margelo.nitro.nitronfc.utils.ChipReadErrorPayload
+import com.margelo.nitro.nitronfc.utils.NfcUiText
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
 
 class NFCScanActivity : AppCompatActivity() {
   companion object {
-    private const val GUIDE_TEXT_DEFAULT =
-      "Place the citizen ID card against the back of the phone"
     private const val GUIDE_TEXT_COLOR_DEFAULT = "#6B7280"
     private const val GUIDE_TEXT_COLOR_ERROR = "#C62828"
 
@@ -43,6 +42,8 @@ class NFCScanActivity : AppCompatActivity() {
   private lateinit var guideTextView: TextView
   private lateinit var cancelButton: Button
   private lateinit var retryButton: Button
+  private lateinit var titleTextView: TextView
+  private lateinit var uiText: NfcUiText
 
   @Volatile
   private var isReading = false
@@ -60,6 +61,7 @@ class NFCScanActivity : AppCompatActivity() {
     isOpen = true
 
     setContentView(R.layout.activity_nfc)
+    uiText = NfcUiText(intent?.getStringExtra(NitroNfcRuntime.EXTRA_LANGUAGE) ?: "en")
     setupWindow()
     setupTransition()
     setupSheetAnimation()
@@ -69,7 +71,10 @@ class NFCScanActivity : AppCompatActivity() {
 
     nfcAdapter = NfcAdapter.getDefaultAdapter(this)
     if (nfcAdapter == null) {
-      val error = ChipReadErrorMapper.nfcNotSupported()
+      val error = ChipReadErrorMapper.localize(
+        ChipReadErrorMapper.nfcNotSupported(),
+        intent?.getStringExtra(NitroNfcRuntime.EXTRA_LANGUAGE) ?: "en",
+      )
       Toast.makeText(this, error.message, Toast.LENGTH_LONG).show()
       showError(error)
       NitroNfcRuntime.fail(error)
@@ -78,14 +83,17 @@ class NFCScanActivity : AppCompatActivity() {
     }
 
     if (nfcAdapter?.isEnabled != true) {
-      val error = ChipReadErrorMapper.nfcDisabled()
+      val error = ChipReadErrorMapper.localize(
+        ChipReadErrorMapper.nfcDisabled(),
+        intent?.getStringExtra(NitroNfcRuntime.EXTRA_LANGUAGE) ?: "en",
+      )
       Toast.makeText(this, error.message, Toast.LENGTH_LONG).show()
       showError(error)
       startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
       return
     }
 
-    updateProgress(0, GUIDE_TEXT_DEFAULT)
+    updateProgress(0, uiText.guideDefault)
   }
 
   override fun onResume() {
@@ -108,7 +116,9 @@ class NFCScanActivity : AppCompatActivity() {
     isCanceled = false
 
     if (shouldCancelPendingScan) {
-      NitroNfcRuntime.cancelIfPending(ChipReadErrorMapper.userCanceled())
+      NitroNfcRuntime.cancelIfPending(
+        ChipReadErrorMapper.localize(ChipReadErrorMapper.userCanceled(), uiLanguage),
+      )
     }
   }
 
@@ -147,6 +157,7 @@ class NFCScanActivity : AppCompatActivity() {
   private fun startChipRead(tag: Tag) {
     isReading = true
     isCanceled = false
+    val language = uiLanguage
 
     Thread {
       try {
@@ -156,8 +167,18 @@ class NFCScanActivity : AppCompatActivity() {
           ?.takeIf { it.isNotBlank() }
           ?: NitroNfcRuntime.documentNumber.trim()
 
+        val readImage = intent?.getBooleanExtra(
+          NitroNfcRuntime.EXTRA_READ_IMAGE,
+          true,
+        ) ?: true
+        val cachePolicy = intent?.getStringExtra(
+          NitroNfcRuntime.EXTRA_CACHE_POLICY,
+        ) ?: "fresh"
         if (citizenId.length < 6) {
-          val error = ChipReadErrorMapper.invalidCitizenId()
+          val error = ChipReadErrorMapper.localize(
+            ChipReadErrorMapper.invalidCitizenId(),
+            language,
+          )
           showError(error)
           NitroNfcRuntime.fail(error)
           Log.e("NitroNfc", "startChipRead: invalid citizenId")
@@ -165,7 +186,13 @@ class NFCScanActivity : AppCompatActivity() {
           return@Thread
         }
 
-        val result = ChipReader.read(tag, citizenId) { progress, message ->
+        val result = ChipReader.read(
+          tag,
+          citizenId,
+          readImage,
+          cachePolicy,
+          language,
+        ) { progress, message ->
           if (!isCanceled) {
             updateProgress(progress, message)
           }
@@ -188,7 +215,7 @@ class NFCScanActivity : AppCompatActivity() {
           isReading = false
           return@Thread
         }
-        val error = ChipReadErrorMapper.toPayload(e)
+        val error = ChipReadErrorMapper.toPayload(e, language)
         Log.e("NitroNfc", "Chip read failed: ${error.message}")
         showError(error)
         isReading = false
@@ -197,7 +224,7 @@ class NFCScanActivity : AppCompatActivity() {
           isReading = false
           return@Thread
         }
-        val error = ChipReadErrorMapper.toPayload(e)
+        val error = ChipReadErrorMapper.toPayload(e, language)
         Log.e("NitroNfc", "NFC read failed", e)
         showError(error)
         isReading = false
@@ -250,8 +277,13 @@ class NFCScanActivity : AppCompatActivity() {
     progressBar = findViewById(R.id.nfcProgressBar)
     progressPercentTextView = findViewById(R.id.tvProgressPercent)
     guideTextView = findViewById(R.id.tvGuide)
+    titleTextView = findViewById(R.id.tvTitle)
     cancelButton = findViewById(R.id.btnCancel)
     retryButton = findViewById(R.id.btnRetry)
+
+    titleTextView.text = uiText.readyToScan
+    cancelButton.text = uiText.cancel
+    retryButton.text = uiText.retry
 
     cancelButton.setOnClickListener {
       cancelScan()
@@ -263,7 +295,7 @@ class NFCScanActivity : AppCompatActivity() {
       isCanceled = false
       progressBar.progress = 0
       retryButton.visibility = View.GONE
-      updateProgress(0, GUIDE_TEXT_DEFAULT)
+      updateProgress(0, uiText.guideDefault)
       vibrate(120)
     }
   }
@@ -278,7 +310,7 @@ class NFCScanActivity : AppCompatActivity() {
       if (message.isNotBlank()) {
         guideTextView.text = message
       } else if (progress == 0) {
-        guideTextView.text = GUIDE_TEXT_DEFAULT
+        guideTextView.text = uiText.guideDefault
       }
 
       guideTextView.setTextColor(Color.parseColor(GUIDE_TEXT_COLOR_DEFAULT))
@@ -310,13 +342,20 @@ class NFCScanActivity : AppCompatActivity() {
 
     isCanceled = true
     isReading = false
-    showError(ChipReadErrorMapper.userCanceled())
-    NitroNfcRuntime.cancelIfPending(ChipReadErrorMapper.userCanceled())
+    val error = ChipReadErrorMapper.localize(
+      ChipReadErrorMapper.userCanceled(),
+      uiLanguage,
+    )
+    showError(error)
+    NitroNfcRuntime.cancelIfPending(error)
 
     runOnUiThread {
       window.decorView.postDelayed({ finish() }, 150)
     }
   }
+
+  private val uiLanguage: String
+    get() = intent?.getStringExtra(NitroNfcRuntime.EXTRA_LANGUAGE) ?: "en"
 
   private fun vibrate(durationMs: Long) {
     try {

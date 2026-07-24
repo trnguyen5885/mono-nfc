@@ -14,7 +14,7 @@ public protocol HybridNitroNfcSpec_protocol: HybridObject {
 
   // Methods
   func isAvailable() throws -> Bool
-  func scan(citizenId: String, onProgress: @escaping (_ event: NFCProgressPayload) -> Void) throws -> Promise<NitroNfcScanResult>
+  func scan(citizenId: String, readImage: Bool, cachePolicy: String, language: String, onProgress: @escaping (_ event: NFCProgressPayload) -> Void) throws -> Promise<NitroNfcScanResult>
   func getDataGroupBuffer(name: String) throws -> ArrayBuffer
   func getDataGroupBase64(name: String) throws -> String
   func clearCachedScan() throws -> Void

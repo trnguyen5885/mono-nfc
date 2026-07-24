@@ -14,7 +14,9 @@ import { getLinkingError, getNitroNfcHybridObject } from './nativeModule';
 import type {
   NFCDataGroupName,
   NFCErrorEvent,
+  NFCLanguage,
   NFCProgressEvent,
+  NFCScanCachePolicy,
   NFCScanResult,
   NFCSubscription,
 } from './types';
@@ -165,6 +167,8 @@ export type {
   NFCDataGroupName,
   NFCErrorEvent,
   NFCProgressEvent,
+  NFCScanCachePolicy,
+  NFCLanguage,
   NFCScanResult,
   NFCSubscription,
 } from './types';
@@ -186,23 +190,40 @@ export const NFCSDK = {
 
   async scan(options: {
     citizenId: string;
+    /** Read DG2 and extract the chip image. Defaults to true. */
+    readImage?: boolean;
+    /** Reuse DG2 only when the current DG1/SOD fingerprint matches. */
+    cachePolicy?: NFCScanCachePolicy;
+    /** Language used by the native NFC UI and user-facing messages. Defaults to English. */
+    language?: NFCLanguage;
     onProgress?: (event: NFCProgressEvent) => void;
   }): Promise<NFCScanResult> {
     const id = validateCitizenId(options.citizenId);
     const nativeModule = requireModule();
 
-    const nativeResult = await nativeModule.scan(id, (event) => {
-      const progressEvent = normalizeProgress(event);
-      options.onProgress?.(progressEvent);
-      notifyProgress(progressEvent);
-    });
+    const nativeResult = await nativeModule.scan(
+      id,
+      options.readImage !== false,
+      options.cachePolicy === 'reuse-if-valid' ? 'reuse-if-valid' : 'fresh',
+      options.language === 'vi' ? 'vi' : 'en',
+      (event) => {
+        const progressEvent = normalizeProgress(event);
+        options.onProgress?.(progressEvent);
+        notifyProgress(progressEvent);
+      }
+    );
     const result = normalizeResult(nativeResult);
     notifyResult(result);
 
     return result;
   },
 
-  startScan(options: { citizenId: string }): void {
+  startScan(options: {
+    citizenId: string;
+    readImage?: boolean;
+    cachePolicy?: NFCScanCachePolicy;
+    language?: NFCLanguage;
+  }): void {
     if (currentScan) {
       return;
     }

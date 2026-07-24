@@ -17,15 +17,19 @@ class NitroNfc: HybridNitroNfcSpec {
 
   public func scan(
     citizenId: String,
+    readImage: Bool,
+    cachePolicy: String,
+    language: String,
     onProgress: @escaping (_ event: NFCProgressPayload) -> Void
   ) throws -> Promise<NitroNfcScanResult> {
     if currentReadTask != nil {
-      return Promise.rejected(
-        withError: ChipReadError.readFailed(
+      return Promise.rejected(withError: ChipReadErrorMapper.localizedError(
+        .readFailed(
           code: "ScanInProgress",
           message: "NFC scan is already running"
-        )
-      )
+        ),
+        language: language
+      ))
     }
 
     let cleanCitizenId = citizenId.trimmingCharacters(
@@ -33,11 +37,15 @@ class NitroNfc: HybridNitroNfcSpec {
     )
 
     guard cleanCitizenId.count >= 6 else {
-      return Promise.rejected(withError: ChipReadError.invalidCitizenId)
+      return Promise.rejected(withError: ChipReadErrorMapper.localizedError(
+        .invalidCitizenId,
+        language: language
+      ))
     }
 
     let promise = Promise<NitroNfcScanResult>()
     lastResult = nil
+    try? FileManager.default.removeItem(at: chipImageCacheDirectory())
 
     currentReadTask = Task { @MainActor [weak self] in
       guard let self else {
@@ -57,6 +65,9 @@ class NitroNfc: HybridNitroNfcSpec {
       do {
         let result = try await self.chipReader.read(
           citizenId: cleanCitizenId,
+          readImage: readImage,
+          cachePolicy: cachePolicy,
+          language: language,
           progressListener: { progress, message in
             onProgress(
               NFCProgressPayload(
@@ -79,17 +90,21 @@ class NitroNfc: HybridNitroNfcSpec {
             code: "Unknown",
             message: error.localizedDescription
           )
+        let localizedError = ChipReadErrorMapper.localizedError(
+          chipReadError,
+          language: language
+        )
 
         onProgress(
           NFCProgressPayload(
             progress: -1,
-            message: chipReadError.message,
+            message: localizedError.message,
             hasError: true,
-            errorCode: chipReadError.code,
-            errorMessage: chipReadError.message
+            errorCode: localizedError.code,
+            errorMessage: localizedError.message
           )
         )
-        promise.reject(withError: chipReadError)
+        promise.reject(withError: localizedError)
       }
     }
 
@@ -111,6 +126,7 @@ class NitroNfc: HybridNitroNfcSpec {
 
   public func clearCachedScan() throws {
     lastResult = nil
+    Dg2Cache.clear()
     let directory = chipImageCacheDirectory()
     try? FileManager.default.removeItem(at: directory)
   }

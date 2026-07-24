@@ -35,6 +35,9 @@ export interface NitroNfc extends HybridObject<{
   isAvailable(): boolean;
   scan(
     citizenId: string,
+    readImage: boolean,
+    cachePolicy: string,
+    language: string,
     onProgress: (event: NFCProgressPayload) => void
   ): Promise<NitroNfcScanResult>;
   getDataGroupBuffer(name: string): ArrayBuffer;

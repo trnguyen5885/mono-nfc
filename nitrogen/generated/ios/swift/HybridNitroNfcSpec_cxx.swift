@@ -137,9 +137,9 @@ open class HybridNitroNfcSpec_cxx {
   }
   
   @inline(__always)
-  public final func scan(citizenId: std.string, onProgress: bridge.Func_void_NFCProgressPayload) -> bridge.Result_std__shared_ptr_Promise_NitroNfcScanResult___ {
+  public final func scan(citizenId: std.string, readImage: Bool, cachePolicy: std.string, language: std.string, onProgress: bridge.Func_void_NFCProgressPayload) -> bridge.Result_std__shared_ptr_Promise_NitroNfcScanResult___ {
     do {
-      let __result = try self.__implementation.scan(citizenId: String(citizenId), onProgress: { () -> (NFCProgressPayload) -> Void in
+      let __result = try self.__implementation.scan(citizenId: String(citizenId), readImage: readImage, cachePolicy: String(cachePolicy), language: String(language), onProgress: { () -> (NFCProgressPayload) -> Void in
         let __wrappedFunction = bridge.wrap_Func_void_NFCProgressPayload(onProgress)
         return { (__event: NFCProgressPayload) -> Void in
           __wrappedFunction.call(__event)

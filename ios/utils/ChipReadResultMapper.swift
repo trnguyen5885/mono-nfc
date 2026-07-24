@@ -3,18 +3,17 @@ import Foundation
 enum ChipReadResultMapper {
   static func mapResult(
     passport: NFCPassportModel,
-    citizenId: String
+    citizenId: String,
+    cachedDg2: CachedDg2? = nil
   ) -> ChipReadResult {
-    var imageFromChipData = Data()
-    var chipImageMimeType = ""
-    if let image = passport.passportImage,
-       let imageData = image.jpegData(compressionQuality: 0.8) {
-      imageFromChipData = imageData
-      chipImageMimeType = "image/jpeg"
-    }
+    let chipImage = cachedDg2.map {
+      (data: $0.imageData, mimeType: $0.mimeType)
+    } ?? extractChipImage(from: passport)
 
     let dg1Data = passport.dataGroupsRead[.DG1].map { Data($0.data) } ?? Data()
-    let dg2Data = passport.dataGroupsRead[.DG2].map { Data($0.data) } ?? Data()
+    let dg2Data = cachedDg2?.dg2Data
+      ?? passport.dataGroupsRead[.DG2].map { Data($0.data) }
+      ?? Data()
     let dg13Data = passport.dataGroupsRead[.DG13].map { Data($0.data) } ?? Data()
     let dg14Data = passport.dataGroupsRead[.DG14].map { Data($0.data) } ?? Data()
     let sodData = passport.dataGroupsRead[.SOD].map { Data($0.data) } ?? Data()
@@ -49,13 +48,47 @@ enum ChipReadResultMapper {
       issueDate: parsedDg13.issueDate,
       issuePlace: parsedDg13.issuePlace,
       expireDate: finalExpireDate,
-      imageFromChipData: imageFromChipData,
-      chipImageMimeType: chipImageMimeType,
+      imageFromChipData: chipImage.data,
+      chipImageMimeType: chipImage.mimeType,
       dg1Data: dg1Data,
       dg2Data: dg2Data,
       dg13Data: dg13Data,
       dg14Data: dg14Data,
       sodData: sodData
     )
+  }
+
+  private static func extractChipImage(
+    from passport: NFCPassportModel
+  ) -> (data: Data, mimeType: String) {
+    if let dg2 = passport.dataGroupsRead[.DG2] as? DataGroup2,
+       !dg2.imageData.isEmpty {
+      // Keep JPEG data in its original encoded form. This avoids decoding and
+      // re-encoding a large biometric image after the NFC read has completed.
+      if dg2.imageDataType == 0 {
+        return (Data(dg2.imageData), "image/jpeg")
+      }
+
+      // JPEG2000 is not consistently supported by native image consumers, so
+      // convert it only when a decoded UIImage is available. If conversion is
+      // unavailable, preserve the original bytes and MIME type for callers
+      // that support JPEG2000.
+      if dg2.imageDataType == 1,
+         let image = passport.passportImage,
+         let imageData = image.jpegData(compressionQuality: 0.8) {
+        return (imageData, "image/jpeg")
+      }
+
+      return (Data(dg2.imageData), "image/jp2")
+    }
+
+    // Keep a defensive fallback for reader versions/cards where DG2 exposes a
+    // decoded passportImage but not the raw imageData property.
+    if let image = passport.passportImage,
+       let imageData = image.jpegData(compressionQuality: 0.8) {
+      return (imageData, "image/jpeg")
+    }
+
+    return (Data(), "")
   }
 }

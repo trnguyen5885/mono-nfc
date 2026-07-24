@@ -34,12 +34,12 @@ abstract class HybridNitroNfcSpec: HybridObject() {
   @Keep
   abstract fun isAvailable(): Boolean
   
-  abstract fun scan(citizenId: String, onProgress: (event: NFCProgressPayload) -> Unit): Promise<NitroNfcScanResult>
+  abstract fun scan(citizenId: String, readImage: Boolean, cachePolicy: String, language: String, onProgress: (event: NFCProgressPayload) -> Unit): Promise<NitroNfcScanResult>
   
   @DoNotStrip
   @Keep
-  private fun scan_cxx(citizenId: String, onProgress: Func_void_NFCProgressPayload): Promise<NitroNfcScanResult> {
-    val __result = scan(citizenId, onProgress)
+  private fun scan_cxx(citizenId: String, readImage: Boolean, cachePolicy: String, language: String, onProgress: Func_void_NFCProgressPayload): Promise<NitroNfcScanResult> {
+    val __result = scan(citizenId, readImage, cachePolicy, language, onProgress)
     return __result
   }
   
