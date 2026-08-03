@@ -1,0 +1,7 @@
+dependency_overrides:
+  identity_nfc_android:
+    path: ../identity_nfc_android
+  identity_nfc_ios:
+    path: ../identity_nfc_ios
+  identity_nfc_platform_interface:
+    path: ../identity_nfc_platform_interface

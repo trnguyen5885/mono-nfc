@@ -1,0 +1,3 @@
+dependency_overrides:
+  identity_nfc_platform_interface:
+    path: ../identity_nfc_platform_interface

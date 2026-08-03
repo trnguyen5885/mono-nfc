@@ -1,0 +1,35 @@
+PODS:
+  - Flutter (1.0.0)
+  - identity_nfc_ios (0.1.0-dev.1):
+    - Flutter
+    - NFCCore (~> 0.1)
+  - NFCCore (0.1.0):
+    - OpenSSL-Universal (~> 1.1)
+  - OpenSSL-Universal (1.1.2301)
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - identity_nfc_ios (from `.symlinks/plugins/identity_nfc_ios/ios`)
+  - NFCCore (from `../../../../native/ios/NFCCore`)
+
+SPEC REPOS:
+  trunk:
+    - OpenSSL-Universal
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  identity_nfc_ios:
+    :path: ".symlinks/plugins/identity_nfc_ios/ios"
+  NFCCore:
+    :path: "../../../../native/ios/NFCCore"
+
+SPEC CHECKSUMS:
+  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  identity_nfc_ios: 0d75730cc80daa9f6313fc0cd247658506c0eb9e
+  NFCCore: 271aae68e8123d28bf5fbc4ecfc4556d59f2d976
+  OpenSSL-Universal: ca89c20240633a77c776082ba76b7d90f992bf77
+
+PODFILE CHECKSUM: 6837856eb677f6fc735afabafdef93b5d959574c
+
+COCOAPODS: 1.16.2

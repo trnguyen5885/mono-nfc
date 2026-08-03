@@ -1,0 +1,26 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.NFC" />
+  <uses-permission android:name="android.permission.VIBRATE" />
+
+  <uses-feature
+    android:name="android.hardware.nfc"
+    android:required="false" />
+
+  <application>
+    <activity
+      android:name=".IdentityNfcScanActivity"
+      android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+      android:exported="false"
+      android:launchMode="singleTop"
+      android:screenOrientation="portrait"
+      android:theme="@style/IdentityNfcBottomSheetTheme"
+      android:windowSoftInputMode="adjustResize">
+      <intent-filter>
+        <action android:name="android.nfc.action.TECH_DISCOVERED" />
+      </intent-filter>
+      <meta-data
+        android:name="android.nfc.action.TECH_DISCOVERED"
+        android:resource="@xml/identity_nfc_tech_filter" />
+    </activity>
+  </application>
+</manifest>
