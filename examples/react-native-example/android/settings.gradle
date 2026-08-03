@@ -1,0 +1,8 @@
+pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
+plugins { id("com.facebook.react.settings") }
+extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+rootProject.name = 'nitronfc.example'
+include ':app'
+include ':nfc-core'
+project(':nfc-core').projectDir = new File(rootProject.projectDir, '../../../native/android/nfc-core')
+includeBuild('../node_modules/@react-native/gradle-plugin')

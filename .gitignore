@@ -43,10 +43,10 @@ android.iml
 
 # Cocoapods
 #
-example/ios/Pods
+examples/react-native-example/ios/Pods
 
 # Ruby
-example/vendor/
+examples/react-native-example/vendor/
 
 # node.js
 #
@@ -83,6 +83,6 @@ ios/generated
 android/generated
 
 # React Native Nitro Modules
-nitrogen/*
-!nitrogen/generated/
-!nitrogen/generated/**
+packages/*/nitrogen/*
+!packages/*/nitrogen/generated/
+!packages/*/nitrogen/generated/**

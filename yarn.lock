@@ -9430,6 +9430,14 @@ __metadata:
   languageName: node
   linkType: hard
 
+"nfc-sdk-monorepo@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "nfc-sdk-monorepo@workspace:."
+  dependencies:
+    turbo: "npm:^2.9.16"
+  languageName: unknown
+  linkType: soft
+
 "nitrogen@npm:^0.36.1":
   version: 0.36.1
   resolution: "nitrogen@npm:0.36.1"
@@ -10404,9 +10412,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-nitro-nfc-example@workspace:example":
+"react-native-nitro-nfc-example@workspace:examples/react-native-example":
   version: 0.0.0-use.local
-  resolution: "react-native-nitro-nfc-example@workspace:example"
+  resolution: "react-native-nitro-nfc-example@workspace:examples/react-native-example"
   dependencies:
     "@babel/core": "npm:^7.25.2"
     "@babel/preset-env": "npm:^7.25.3"
@@ -10426,16 +10434,18 @@ __metadata:
     react-native-builder-bob: "npm:^0.41.0"
     react-native-monorepo-config: "npm:^0.4.0"
     react-native-nitro-modules: "npm:^0.36.1"
+    react-native-nitro-nfc: "workspace:*"
     react-native-web: "npm:~0.21.2"
     vite: "npm:^7.1.1"
     vite-plugin-commonjs: "npm:^0.10.4"
   languageName: unknown
   linkType: soft
 
-"react-native-nitro-nfc@workspace:.":
+"react-native-nitro-nfc@workspace:*, react-native-nitro-nfc@workspace:packages/react-native-nitro-nfc":
   version: 0.0.0-use.local
-  resolution: "react-native-nitro-nfc@workspace:."
+  resolution: "react-native-nitro-nfc@workspace:packages/react-native-nitro-nfc"
   dependencies:
+    "@babel/core": "npm:^7.25.2"
     "@commitlint/config-conventional": "npm:^21.0.2"
     "@eslint/compat": "npm:^2.1.0"
     "@eslint/eslintrc": "npm:^3.3.5"
@@ -10457,12 +10467,12 @@ __metadata:
     nitrogen: "npm:^0.36.1"
     prettier: "npm:^3.8.3"
     react: "npm:19.2.3"
+    react-dom: "npm:19.2.3"
     react-native: "npm:0.85.0"
     react-native-builder-bob: "npm:^0.41.0"
     react-native-nitro-modules: "npm:^0.36.1"
     react-native-web: "npm:~0.21.2"
     release-it: "npm:^20.2.0"
-    turbo: "npm:^2.9.16"
     typescript: "npm:^6.0.3"
   peerDependencies:
     react: "*"
