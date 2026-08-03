@@ -1,0 +1,11 @@
+event	progress	meaning	owner
+opening native screen	0	RN adapter has opened the Android host screen	Android adapter
+connecting/initializing	10	Native NFC session starts	core
+PACE authentication	20	CAN/PACE authentication starts	core
+DG1 data	40	MRZ/group reading starts	core
+DG13 data	65	Vietnam-specific group reading starts	core
+DG14	80	Optional security group reading	core
+SOD	90	Optional SOD reading	core
+DG2/cache	95	Image read or matching cached portrait used	core
+complete	100	All requested core work is complete	core
+error	-1 in Nitro payload	Stable error code and localized display message	adapter maps core error

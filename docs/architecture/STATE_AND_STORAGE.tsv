@@ -1,0 +1,5 @@
+state	owner	storage	retention	clear operation	privacy requirement
+last RN scan result	Nitro adapter	memory	until next scan/clear	NFCSDK.clearCachedScan	Never log raw DG or image
+DG2 cache	Android/iOS core	memory	5 minutes, fingerprinted by DG1+SOD	NfcCore.clearCachedScan / NfcCore.clearCachedScan()	No cross-card reuse
+chip image URI	RN adapter	app cache/temp directory	until next scan/clear or OS cleanup	NFCSDK.clearCachedScan	Do not publish URI or biometric bytes to logs
+scan Promise/progress callback	RN adapter	memory	current scan only	activity/session cancellation	Clear on cancellation and completion

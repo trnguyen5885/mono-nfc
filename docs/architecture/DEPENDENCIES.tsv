@@ -1,0 +1,13 @@
+scope	dependency	version/policy	purpose	owner/action
+android-core	org.jmrtd:jmrtd	0.7.18	PACE and ICAO LDS protocol	Keep parity-tested version
+android-core	net.sf.scuba:scuba-sc-android	0.0.20	Smart-card transport used by JMRTD	Keep with JMRTD
+android-core	bcprov-jdk15on	strictly 1.64	Cryptography provider	Validate against Android/Xcode release matrix
+android-core	bcpkix-jdk15on	strictly 1.64	X.509 and PACE support	Validate with bcprov
+android-adapter	androidx.appcompat:appcompat	1.7.0	RN-hosted Android NFC screen	Adapter-only dependency
+android-adapter	react-android	React Native supplied	React Native integration	Adapter-only dependency
+android-adapter	react-native-nitro-modules	^0.36.1	Nitro bridge	Adapter-only dependency
+ios-core	NFCPassportReader fork	local source	CoreNFC/PACE/passport data groups	Maintain attribution and parity tests
+ios-core	OpenSSL (SPM)	1.1.2300..<1.2.0	SwiftPM dependency of passport reader	Test independent SPM consumer
+ios-core	OpenSSL-Universal (Pod)	~> 1.1 in default mode	CocoaPods dependency of NFCCore; omitted when USE_MANUAL_OPENSSL=1 (Flutter) or a legacy host alias is set	Validate bundled and host-provided modes on consumer matrix
+ios-adapter	React-jsi	React Native supplied	Nitro bridge	Adapter-only dependency
+ios-adapter	React-callinvoker	React Native supplied	Nitro bridge	Adapter-only dependency
