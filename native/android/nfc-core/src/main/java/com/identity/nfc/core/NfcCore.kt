@@ -12,13 +12,17 @@ import com.identity.nfc.core.utils.NfcUiText
 import java.io.ByteArrayInputStream
 import java.io.DataInputStream
 import java.security.MessageDigest
+import java.util.Locale
+import net.sf.scuba.smartcards.APDUEvent
 import net.sf.scuba.smartcards.CardService
+import net.sf.scuba.smartcards.CardServiceException
 import org.jmrtd.PACEKeySpec
 import org.jmrtd.PassportService
 import org.jmrtd.lds.CardAccessFile
 import org.jmrtd.lds.PACEInfo
 import org.jmrtd.lds.icao.DG1File
 import org.jmrtd.lds.icao.DG2File
+import org.jmrtd.lds.iso19794.FaceInfo
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
 
@@ -143,7 +147,7 @@ fun interface NfcProgressListener {
  */
 object NfcCore {
 
-  private const val TAG = "NitroNfc"
+  private const val TAG = "NfcCore"
   private const val ISO_DEP_TIMEOUT = 30_000
 
   /** Clears only the short-lived in-memory DG2 cache managed by this core. */
@@ -171,51 +175,70 @@ object NfcCore {
       throw NfcCoreException("Invalid citizen ID")
     }
 
-    NfcCrypto.ensureBouncyCastleProvider()
-
     var isoDep: IsoDep? = null
     var cardService: CardService? = null
     var passportService: PassportService? = null
+    var stage = "validate"
 
     try {
+      stage = "initialize_crypto"
+      NfcCrypto.ensureBouncyCastleProvider()
       progressListener.onProgress(10, uiText.connecting)
 
+      stage = "get_isodep"
       isoDep = IsoDep.get(tag) ?: throw NfcCoreException("IsoDep chip not detected")
 
+      stage = "configure_isodep"
       isoDep.timeout = ISO_DEP_TIMEOUT
-      cardService = CardService.getInstance(isoDep)
-      cardService.open()
+      val service = CardService.getInstance(isoDep)
+      cardService = service
+      service.addAPDUListener { event ->
+        logApdu(stage, event)
+      }
 
+      stage = "open_card_service"
+      service.open()
+
+      stage = "create_passport_service"
       passportService =
-              PassportService(
-                      cardService,
+                      PassportService(
+                      service,
                       PassportService.NORMAL_MAX_TRANCEIVE_LENGTH,
                       PassportService.DEFAULT_MAX_BLOCKSIZE,
                       false,
                       false,
               )
+
+      stage = "open_passport_service"
       passportService.open()
 
       // PACE authentication
       val canCode = cleanCitizenId.takeLast(6)
       progressListener.onProgress(20, uiText.authenticating)
 
+      stage = "read_card_access"
       val paceInfo =
               readPaceInfo(passportService)
                       ?: throw NfcCoreException("The chip does not support PACE")
 
+      stage = "pace_authentication"
       passportService.doPACE(
               PACEKeySpec.createCANKey(canCode),
               paceInfo.objectIdentifier,
               PACEInfo.toParameterSpec(paceInfo.parameterId),
               null,
       )
+
+      stage = "select_applet"
       passportService.sendSelectApplet(true)
 
       // DG1 — MRZ
+      stage = "read_dg1"
       progressListener.onProgress(40, uiText.readingData)
       val dg1Bytes =
-              passportService.getInputStream(PassportService.EF_DG1).use { input ->
+              passportService
+                      .getInputStream(PassportService.EF_DG1, PassportService.DEFAULT_MAX_BLOCKSIZE)
+                      .use { input ->
                 input.readBytes()
               }
 
@@ -228,7 +251,7 @@ object NfcCore {
                       mrzInfo.secondaryIdentifier,
               )
       val dob = MrzUtils.formatBirthDate(mrzInfo.dateOfBirth?.toString() ?: "")
-      var gender = MrzUtils.normalizeGender(mrzInfo.gender?.toString() ?: "")
+      var gender = MrzUtils.normalizeGender(mrzInfo.genderCode?.toString() ?: "")
       val nationality = MrzUtils.normalizeNationality(mrzInfo.nationality)
       val expireDate = MrzUtils.formatExpireDate(mrzInfo.dateOfExpiry?.toString() ?: "")
 
@@ -236,14 +259,17 @@ object NfcCore {
       var dg13Bytes = ByteArray(0)
       var parsedDg13 = Dg13ParsedData()
       try {
+        stage = "read_dg13"
         progressListener.onProgress(65, uiText.readingData)
         dg13Bytes =
-                passportService.getInputStream(PassportService.EF_DG13).use { input ->
+                passportService
+                        .getInputStream(PassportService.EF_DG13, PassportService.DEFAULT_MAX_BLOCKSIZE)
+                        .use { input ->
                   input.readBytes()
                 }
         parsedDg13 = Dg13Parser.parse(dg13Bytes)
       } catch (e: Exception) {
-        Log.e(TAG, "DG13 read failed", e)
+        logFailure("read_dg13", e)
       }
 
       if (parsedDg13.gender.isNotBlank()) {
@@ -252,6 +278,7 @@ object NfcCore {
       val fullName = parsedDg13.fullName.ifBlank { mrzFullName }
 
       // DG14 + SOD — Security data
+      stage = "read_dg14"
       val dg14Bytes =
               readOptionalDataGroup(
                       passportService,
@@ -261,6 +288,7 @@ object NfcCore {
                       uiText,
                       progressListener,
               )
+      stage = "read_sod"
       val sodBytes =
               readOptionalDataGroup(
                       passportService,
@@ -290,10 +318,12 @@ object NfcCore {
       val dg2Bytes: ByteArray
       val chipImage: ChipImage
       if (cachedDg2 != null) {
+        stage = "reuse_cached_dg2"
         progressListener.onProgress(95, uiText.cachedImage)
         dg2Bytes = cachedDg2.dg2Bytes
         chipImage = cachedDg2.image
       } else if (request.readImage) {
+        stage = "read_dg2"
         dg2Bytes =
                 readOptionalDataGroup(
                         passportService,
@@ -303,6 +333,7 @@ object NfcCore {
                         uiText,
                         progressListener,
                 )
+        stage = "extract_dg2_image"
         chipImage = extractChipImage(dg2Bytes)
         if (fingerprint != null && dg2Bytes.isNotEmpty()) {
           Dg2Cache.put(
@@ -336,6 +367,7 @@ object NfcCore {
               sodBytes = sodBytes,
       )
     } catch (e: Exception) {
+      logFailure(stage, e)
       throw NfcCoreErrorMapper.toException(e)
     } finally {
       closeQuietly { passportService?.close() }
@@ -347,7 +379,10 @@ object NfcCore {
   private fun readPaceInfo(passportService: PassportService): PACEInfo? {
     val cardAccessFile =
             CardAccessFile(
-                    passportService.getInputStream(PassportService.EF_CARD_ACCESS),
+                    passportService.getInputStream(
+                            PassportService.EF_CARD_ACCESS,
+                            PassportService.DEFAULT_MAX_BLOCKSIZE,
+                    ),
             )
     return cardAccessFile.securityInfos.filterIsInstance<PACEInfo>().firstOrNull()
   }
@@ -362,9 +397,11 @@ object NfcCore {
   ): ByteArray {
     return try {
       progressListener.onProgress(progress, uiText.readingData)
-      passportService.getInputStream(fileId).use { input -> input.readBytes() }
+      passportService
+              .getInputStream(fileId, PassportService.DEFAULT_MAX_BLOCKSIZE)
+              .use { input -> input.readBytes() }
     } catch (e: Exception) {
-      Log.e(TAG, "$label read failed", e)
+      logFailure("read_${label.lowercase(Locale.ROOT)}", e)
       ByteArray(0)
     }
   }
@@ -384,8 +421,10 @@ object NfcCore {
     return try {
       val dg2File = DG2File(ByteArrayInputStream(dg2Bytes))
       val imageInfo =
-              dg2File.faceInfos
+              dg2File
+                      .getSubRecords()
                       .asSequence()
+                      .filterIsInstance<FaceInfo>()
                       .flatMap { it.faceImageInfos.asSequence() }
                       .firstOrNull()
                       ?: return ChipImage(ByteArray(0), "")
@@ -407,9 +446,59 @@ object NfcCore {
               mimeType = imageInfo.mimeType.orEmpty(),
       )
     } catch (error: Exception) {
-      Log.w(TAG, "DG2 image extraction failed", error)
+      logFailure("extract_dg2_image", error)
       ChipImage(ByteArray(0), "")
     }
+  }
+
+  private fun logApdu(stage: String, event: APDUEvent) {
+    val command = event.commandAPDU
+    val response = event.responseAPDU
+    val sw = response?.getSW()?.let { value -> "0x%04X".format(Locale.ROOT, value and 0xFFFF) }
+      ?: "none"
+
+    Log.i(
+            TAG,
+            "APDU stage=$stage seq=${event.sequenceNumber} " +
+                    "cla=0x%02X ins=0x%02X p1=0x%02X p2=0x%02X ".format(
+                            Locale.ROOT,
+                            command?.cla ?: 0,
+                            command?.ins ?: 0,
+                            command?.p1 ?: 0,
+                            command?.p2 ?: 0,
+                    ) +
+                    "commandDataBytes=${command?.nc ?: 0} expectedResponseBytes=${command?.ne ?: 0} " +
+                    "responseDataBytes=${response?.nr ?: 0} sw=$sw",
+    )
+  }
+
+  private fun logFailure(stage: String, error: Throwable) {
+    val statusWord =
+            generateSequence(error) { it.cause }
+                    .filterIsInstance<CardServiceException>()
+                    .map { it.sw }
+                    .firstOrNull { it >= 0 }
+                    ?.let { value -> "0x%04X".format(Locale.ROOT, value and 0xFFFF) }
+                    ?: "none"
+    val chain =
+            generateSequence(error) { it.cause }
+                    .take(8)
+                    .joinToString(" -> ") { cause ->
+                      "${cause.javaClass.simpleName}: ${sanitizeMessage(cause.message)}"
+                    }
+
+    Log.e(TAG, "NFC read failed stage=$stage statusWord=$statusWord chain=$chain")
+  }
+
+  private fun sanitizeMessage(message: String?): String {
+    if (message.isNullOrBlank()) return "<no-message>"
+
+    return message
+            .replace(Regex("(?i)CAPDU\\s*=\\s*[^,)]*"), "CAPDU=<redacted>")
+            .replace(Regex("(?i)RAPDU\\s*=\\s*[^,)]*"), "RAPDU=<redacted>")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .take(240)
   }
 
   private inline fun closeQuietly(block: () -> Unit) {

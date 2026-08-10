@@ -82,9 +82,9 @@ ChipReader hiện xử lý protocol và parsing, nhưng host flow còn liên k�
 Dependency phải giữ hoặc thay thế có bằng chứng:
 
 - Android NFC/IsoDep;
-- JMRTD 0.7.18;
-- Scuba;
-- Bouncy Castle 1.64;
+- JMRTD 0.8.6;
+- Scuba (`scuba-sc-android` 0.0.26);
+- Bouncy Castle `jdk18on` 1.84 (`bcprov` / `bcpkix` / `bcutil`);
 - AndroidX AppCompat;
 - minSdk/compileSdk hiện tại của package.
 
