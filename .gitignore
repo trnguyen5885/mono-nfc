@@ -35,6 +35,7 @@ project.xcworkspace
 .classpath
 .cxx
 .gradle
+**/.kotlin/
 .idea
 .project
 .settings
@@ -89,3 +90,9 @@ android/generated
 packages/*/nitrogen/*
 !packages/*/nitrogen/generated/
 !packages/*/nitrogen/generated/**
+
+# Generated NFC Library deliveries and binary build output
+/hilo-nfc-*/
+/native/ios/NFCCore/.build/
+/native/ios/NFCCore/dist/
+/examples/native-ios-example/Frameworks/*.xcframework/
