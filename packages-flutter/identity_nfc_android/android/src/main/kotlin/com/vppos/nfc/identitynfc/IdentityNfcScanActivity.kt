@@ -1,4 +1,4 @@
-package com.identity.nfc.identitynfc
+package com.vppos.nfc.identitynfc
 
 import android.content.Intent
 import android.graphics.Color
@@ -17,14 +17,15 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.identity.nfc.core.NfcCachePolicy
-import com.identity.nfc.core.NfcCore
-import com.identity.nfc.core.NfcCoreException
-import com.identity.nfc.core.NfcScanRequest
-import com.identity.nfc.core.NfcScanResult
-import com.identity.nfc.core.utils.NfcCoreErrorMapper
-import com.identity.nfc.core.utils.NfcCoreErrorPayload
-import com.identity.nfc.core.utils.NfcUiText
+import com.vppos.nfc.core.NfcCachePolicy
+import com.vppos.nfc.core.NfcCore
+import com.vppos.nfc.core.NfcScanCancellationSignal
+import com.vppos.nfc.core.NfcCoreException
+import com.vppos.nfc.core.NfcScanRequest
+import com.vppos.nfc.core.NfcScanResult
+import com.vppos.nfc.core.utils.NfcCoreErrorMapper
+import com.vppos.nfc.core.utils.NfcCoreErrorPayload
+import com.vppos.nfc.core.utils.NfcUiText
 
 /** Native Android scan UI shared in spirit with the React Native integration. */
 internal class IdentityNfcScanActivity : AppCompatActivity() {
@@ -76,6 +77,9 @@ internal class IdentityNfcScanActivity : AppCompatActivity() {
   @Volatile
   private var isCanceled = false
 
+  @Volatile
+  private var activeCancellationSignal: NfcScanCancellationSignal? = null
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     isOpen = true
@@ -118,10 +122,11 @@ internal class IdentityNfcScanActivity : AppCompatActivity() {
   }
 
   override fun onDestroy() {
+    isCanceled = true
+    activeCancellationSignal?.cancel()
     isOpen = false
     isReading = false
     scanCompleted = false
-    isCanceled = false
     super.onDestroy()
   }
 
@@ -153,6 +158,8 @@ internal class IdentityNfcScanActivity : AppCompatActivity() {
   private fun startChipRead(tag: Tag) {
     isReading = true
     isCanceled = false
+    val cancellationSignal = NfcScanCancellationSignal()
+    activeCancellationSignal = cancellationSignal
     val language = uiLanguage
 
     Thread {
@@ -179,6 +186,7 @@ internal class IdentityNfcScanActivity : AppCompatActivity() {
             ),
             language = language,
           ),
+          cancellationSignal,
         ) { progress, message ->
           if (!isCanceled) updateProgress(progress, message)
         }
@@ -197,6 +205,10 @@ internal class IdentityNfcScanActivity : AppCompatActivity() {
       } catch (error: Throwable) {
         if (!isCanceled) showError(NfcCoreErrorMapper.toPayload(error, language))
         isReading = false
+      } finally {
+        if (activeCancellationSignal === cancellationSignal) {
+          activeCancellationSignal = null
+        }
       }
     }.start()
   }
@@ -287,6 +299,7 @@ internal class IdentityNfcScanActivity : AppCompatActivity() {
     if (scanCompleted || isCanceled) return
     isCanceled = true
     isReading = false
+    activeCancellationSignal?.cancel()
     val error = NfcCoreErrorMapper.localize(NfcCoreErrorMapper.userCanceled(), uiLanguage)
     showError(error)
     window.decorView.postDelayed({ finishWithError(error) }, 150)

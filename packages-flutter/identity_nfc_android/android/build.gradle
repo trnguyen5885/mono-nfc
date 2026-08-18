@@ -1,4 +1,4 @@
-group = "com.identity.nfc.identitynfc"
+group = "com.vppos.nfc.identitynfc"
 version = "1.0-SNAPSHOT"
 
 buildscript {
@@ -25,7 +25,7 @@ apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
 
 android {
-    namespace = "com.identity.nfc.identitynfc"
+    namespace = "com.vppos.nfc.identitynfc"
 
     compileSdk = 36
 
@@ -52,8 +52,8 @@ android {
         if (rootProject.findProject(":nfc-core") != null) {
             implementation(project(":nfc-core"))
         } else {
-            def nfcCoreVersion = rootProject.findProperty("nfcCoreVersion") ?: "0.1.0"
-            implementation("com.identity.nfc:nfc-core:${nfcCoreVersion}")
+            def nfcCoreVersion = rootProject.findProperty("nfcCoreVersion") ?: "1.0.0"
+            implementation("com.vppos.nfc:nfc-core:${nfcCoreVersion}")
         }
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.0.0")

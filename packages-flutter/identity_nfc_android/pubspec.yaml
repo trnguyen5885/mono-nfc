@@ -37,7 +37,7 @@ flutter:
     implements: identity_nfc
     platforms:
       android:
-        package: com.identity.nfc.identitynfc
+        package: com.vppos.nfc.identitynfc
         pluginClass: IdentityNfcPlugin
 
   # To add assets to your plugin package, add an assets section, like this:

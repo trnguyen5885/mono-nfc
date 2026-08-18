@@ -1,4 +1,4 @@
-package com.identity.nfc.identitynfc
+package com.vppos.nfc.identitynfc
 
 import android.os.Handler
 import android.os.Looper

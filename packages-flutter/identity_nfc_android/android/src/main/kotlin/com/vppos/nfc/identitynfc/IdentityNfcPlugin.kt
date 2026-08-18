@@ -1,10 +1,10 @@
-package com.identity.nfc.identitynfc
+package com.vppos.nfc.identitynfc
 
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.nfc.NfcAdapter
-import com.identity.nfc.core.NfcCore
+import com.vppos.nfc.core.NfcCore
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
