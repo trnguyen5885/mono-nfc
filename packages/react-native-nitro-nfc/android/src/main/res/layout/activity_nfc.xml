@@ -11,7 +11,7 @@
         android:layout_height="match_parent"
         android:background="#52000000" />
 
-    <LinearLayout
+    <ScrollView
         android:id="@+id/sheetContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -20,42 +20,51 @@
         android:layout_marginEnd="10dp"
         android:layout_marginBottom="10dp"
         android:background="@drawable/bg_nfc_bottom_sheet"
+        android:fillViewport="false"
         android:elevation="18dp"
-        android:gravity="center_horizontal"
-        android:orientation="vertical"
-        android:paddingStart="24dp"
-        android:paddingTop="14dp"
-        android:paddingEnd="24dp"
-        android:paddingBottom="24dp">
+        android:importantForAccessibility="yes">
 
-        <View
-            android:layout_width="52dp"
-            android:layout_height="5dp"
-            android:background="@drawable/bg_nfc_sheet_handle" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingStart="24dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="24dp"
+            android:paddingBottom="24dp">
 
-        
+            <View
+                android:layout_width="52dp"
+                android:layout_height="5dp"
+                android:background="@drawable/bg_nfc_sheet_handle"
+                android:importantForAccessibility="no" />
 
-        <TextView
+            <TextView
             android:id="@+id/tvTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
+            android:fontFamily="sans-serif-medium"
             android:text="Ready to scan"
             android:textColor="#111827"
             android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textStyle="normal" />
 
-        <TextView
+            <TextView
             android:id="@+id/tvGuide"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:gravity="center"
+            android:accessibilityLiveRegion="polite"
+            android:fontFamily="sans-serif"
             android:text="Place the citizen ID card against the back of the phone and keep it still."
             android:textColor="#6B7280"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            android:textStyle="normal" />
 
-        <ImageView
+            <ImageView
             android:id="@+id/ivNfcHint"
             android:layout_width="112dp"
             android:layout_height="112dp"
@@ -63,50 +72,51 @@
             android:contentDescription="@null"
             android:src="@drawable/ic_nfc_scan_hint" />
 
-        <LinearLayout
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvProgressPercent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:layout_marginBottom="8dp"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="end"
+            android:text="0%"
+            android:textColor="#111827"
+            android:textSize="14sp"
+            android:textStyle="normal" />
 
-            <ProgressBar
-                android:id="@+id/nfcProgressBar"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="0dp"
-                android:layout_height="8dp"
-                android:layout_weight="1"
-                android:max="100"
-                android:progress="0"
-                android:progressDrawable="@drawable/bg_nfc_progress_bar" />
+        <ProgressBar
+            android:id="@+id/nfcProgressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:max="100"
+            android:progress="0"
+            android:progressDrawable="@drawable/bg_nfc_progress_bar" />
+    </LinearLayout>
 
-            <TextView
-                android:id="@+id/tvProgressPercent"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:text="0%"
-                android:textColor="#111827"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <Button
+            <Button
             android:id="@+id/btnCancel"
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:layout_marginTop="20dp"
-            android:background="@drawable/bg_nfc_retry_button"
+            android:background="@drawable/bg_nfc_cancel_button"
             android:backgroundTint="@null"
             android:elevation="0dp"
+            android:fontFamily="sans-serif-medium"
             android:stateListAnimator="@null"
             android:text="Cancel"
             android:textAllCaps="false"
             android:textColor="#111827"
             android:textSize="16sp"
-            android:textStyle="bold" />
+            android:textStyle="normal" />
 
-        <Button
+            <Button
             android:id="@+id/btnRetry"
             android:layout_width="match_parent"
             android:layout_height="50dp"
@@ -114,14 +124,34 @@
             android:background="@drawable/bg_nfc_retry_button"
             android:backgroundTint="@null"
             android:elevation="0dp"
+            android:fontFamily="sans-serif-medium"
             android:stateListAnimator="@null"
             android:text="Retry"
             android:textAllCaps="false"
             android:textColor="#007AFF"
             android:textSize="16sp"
-            android:textStyle="bold"
+            android:textStyle="normal"
             android:visibility="gone" />
 
-    </LinearLayout>
+            <Button
+                android:id="@+id/btnOpenNfcSettings"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_nfc_retry_button"
+                android:backgroundTint="@null"
+                android:elevation="0dp"
+                android:fontFamily="sans-serif-medium"
+                android:stateListAnimator="@null"
+                android:text="Open NFC settings"
+                android:textAllCaps="false"
+                android:textColor="#007AFF"
+                android:textSize="16sp"
+                android:textStyle="normal"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </ScrollView>
 
 </FrameLayout>

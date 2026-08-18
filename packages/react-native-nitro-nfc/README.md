@@ -103,6 +103,12 @@ Do not use manual mode unless the host provides OpenSSL. The legacy alias
 
 The package manifest declares the NFC permission and native scan activity. The host application normally does not need to add the NFC permission manually.
 
+The Android adapter resolves the pinned Maven artifact
+`com.vppos.nfc:nfc-core:<SemVer>` outside the monorepo. Configure the Maven
+repository that contains the complete artifact directory (AAR, POM and Gradle
+metadata); do not copy only the AAR. Full setup is in the
+[React Native integration guide](../../docs/react-native/INTEGRATION.md).
+
 The device must have NFC hardware and NFC must be enabled in Settings. isAvailable() checks for an NFC adapter; starting a scan reports NFCDisabled when NFC is turned off.
 
 ## Quick start
@@ -131,8 +137,7 @@ async function readCitizenCard(citizenId: string) {
       },
     });
 
-    console.log('Full name:', result.fullName);
-    console.log('Citizen ID:', result.citizenId);
+    // Render only the fields your flow needs. Do not log citizen ID data.
     return result;
   } catch (error) {
     if (error instanceof NFCSDKError) {
@@ -185,7 +190,8 @@ The method:
 - opens the native NFC screen;
 - calls onProgress while reading;
 - resolves with NFCScanResult on success;
-- rejects when the user cancels, NFC is unavailable, authentication fails, or reading fails;
+- keeps the Android sheet open for recoverable errors so the user can retry or enable NFC;
+- rejects once when the user cancels or a terminal error closes the native sheet;
 - does not allow concurrent native scan sessions.
 
 `readImage` defaults to `true`. Set it to `false` when the caller only needs
@@ -237,7 +243,11 @@ codes such as `InvalidMRZKey`, `PACEError`, `ConnectionError`, and
 `UserCanceled` remain unchanged, so applications can handle errors without
 depending on the selected display language.
 
-An error progress event may be delivered before the Promise is rejected.
+On Android, `NFCDisabled`, `InvalidMRZKey`, `PACEError`, `NoConnectedTag`,
+`ConnectionError`, and `SessionTimeout` are recoverable. The native sheet stays
+open and the Promise remains pending while it offers the appropriate retry or
+NFC Settings action. Error events include `recoverable` and `suggestedAction`.
+Terminal errors and cancellation reject the Promise once.
 
 ### NFCSDK.startScan(options): void
 
@@ -277,6 +287,7 @@ Successful event:
 type NFCProgressEvent = {
   progress: number;
   message: string;
+  phase?: 'opening' | 'waiting-for-tag' | 'connecting' | 'authenticating' | 'reading' | 'success';
 };
 ```
 
@@ -287,6 +298,8 @@ type NFCProgressEvent = {
   error: {
     code: string;
     message: string;
+    recoverable?: boolean;
+    suggestedAction?: 'retry' | 'open-nfc-settings' | 'close';
   };
 };
 ```
@@ -299,7 +312,7 @@ Registers a listener for successful scan results.
 
 ```ts
 const subscription = NFCSDK.onScanResult((result) => {
-  console.log('Scan completed:', result);
+  // Render only the fields your flow needs. Do not log the result object.
 });
 
 subscription.remove();

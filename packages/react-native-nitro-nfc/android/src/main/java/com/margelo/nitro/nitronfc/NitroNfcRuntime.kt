@@ -1,6 +1,5 @@
 package com.margelo.nitro.nitronfc
 
-import android.content.Intent
 import android.nfc.NfcAdapter
 import android.net.Uri
 import android.os.Handler
@@ -8,13 +7,16 @@ import android.os.Looper
 import android.util.Base64
 import android.util.Log
 import com.facebook.react.bridge.ReactApplicationContext
-import com.identity.nfc.core.NfcCore
-import com.identity.nfc.core.NfcScanResult
+import com.vppos.nfc.core.NfcCore
+import com.vppos.nfc.core.NfcScanUi
+import com.vppos.nfc.core.NfcScanUiListener
+import com.vppos.nfc.core.NfcScanRequest
+import com.vppos.nfc.core.NfcScanResult
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.ArrayBuffer
 import com.margelo.nitro.core.Promise
-import com.identity.nfc.core.utils.NfcCoreErrorPayload
-import com.identity.nfc.core.utils.NfcUiText
+import com.vppos.nfc.core.utils.NfcCoreErrorPayload
+import com.vppos.nfc.core.utils.NfcUiText
 import java.io.File
 import java.util.Locale
 
@@ -57,7 +59,7 @@ object NitroNfcRuntime {
     val context = NitroModules.applicationContext
       ?: return Promise.rejected(IllegalStateException("Nitro NFC context is unavailable"))
 
-    if (NFCScanActivity.isOpen) {
+    if (NfcScanUi.isOpen) {
       return Promise.rejected(IllegalStateException("NFC scan is already open"))
     }
 
@@ -78,8 +80,39 @@ object NitroNfcRuntime {
     }
 
     return try {
-      startActivity(context, cleanCitizenId, readImage, cachePolicy, language)
-      emitProgress(0, NfcUiText(language).openingNativeScreen)
+      val started = NfcScanUi.start(
+        context.currentActivity ?: context,
+        NfcScanRequest(
+          citizenId = cleanCitizenId,
+          readImage = readImage,
+          cachePolicy = com.vppos.nfc.core.NfcCachePolicy.fromWireValue(cachePolicy),
+          language = language,
+        ),
+        object : NfcScanUiListener {
+          override fun onProgress(progress: Int, message: String) {
+            emitProgress(progress, message)
+          }
+
+          override fun onRecoverableError(error: NfcCoreErrorPayload) {
+            emitError(error)
+          }
+
+          override fun onSuccess(result: NfcScanResult) {
+            complete(result)
+          }
+
+          override fun onCancelled(error: NfcCoreErrorPayload) {
+            cancelIfPending(error)
+          }
+
+          override fun onFailure(error: NfcCoreErrorPayload) {
+            fail(error)
+          }
+        },
+      )
+      if (started) {
+        emitProgress(0, NfcUiText(language).openingNativeScreen)
+      }
       promise
     } catch (error: Throwable) {
       rejectPending(error)
@@ -134,7 +167,8 @@ object NitroNfcRuntime {
   }
 
   fun fail(error: NfcCoreErrorPayload) {
-    emitError(error)
+    // The Activity has already published the native error event. Rejecting here
+    // must not send it a second time through the progress callback.
     rejectPending(IllegalStateException("${error.code}: ${error.message}"))
   }
 
@@ -162,30 +196,6 @@ object NitroNfcRuntime {
       lastResult = null
     }
     deleteChipImageCache()
-  }
-
-  private fun startActivity(
-    context: ReactApplicationContext,
-    citizenId: String,
-    readImage: Boolean,
-    cachePolicy: String,
-    language: String,
-  ) {
-    val activity = context.currentActivity
-    val intent = Intent(activity ?: context, NFCScanActivity::class.java)
-      .putExtra(EXTRA_DOCUMENT_NUMBER, citizenId)
-      .putExtra(EXTRA_READ_IMAGE, readImage)
-      .putExtra(EXTRA_CACHE_POLICY, cachePolicy)
-      .putExtra(EXTRA_LANGUAGE, language)
-      .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-      .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-
-    if (activity != null) {
-      activity.startActivity(intent)
-    } else {
-      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-      context.startActivity(intent)
-    }
   }
 
   private fun dispatchProgress(payload: NFCProgressPayload) {

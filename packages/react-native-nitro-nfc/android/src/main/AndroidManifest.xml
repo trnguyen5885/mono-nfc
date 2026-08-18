@@ -6,23 +6,5 @@
         android:name="android.hardware.nfc"
         android:required="false" />
 
-    <application>
-        <activity
-            android:name="com.margelo.nitro.nitronfc.NFCScanActivity"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
-            android:exported="false"
-            android:launchMode="singleTop"
-            android:screenOrientation="portrait"
-            android:theme="@style/NfcBottomSheetTheme"
-            android:windowSoftInputMode="adjustResize">
-
-            <intent-filter>
-                <action android:name="android.nfc.action.TECH_DISCOVERED" />
-            </intent-filter>
-
-            <meta-data
-                android:name="android.nfc.action.TECH_DISCOVERED"
-                android:resource="@xml/nfc_tech_filter" />
-        </activity>
-    </application>
+    <application />
 </manifest>

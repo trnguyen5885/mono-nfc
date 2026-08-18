@@ -112,8 +112,8 @@ dependencies {
   if (rootProject.findProject(":nfc-core") != null) {
     implementation project(":nfc-core")
   } else {
-    def nfcCoreVersion = rootProject.findProperty("nfcCoreVersion") ?: "0.1.0"
-    implementation "com.identity.nfc:nfc-core:${nfcCoreVersion}"
+    def nfcCoreVersion = rootProject.findProperty("nfcCoreVersion") ?: "1.0.0"
+    implementation "com.vppos.nfc:nfc-core:${nfcCoreVersion}"
   }
   implementation "androidx.appcompat:appcompat:1.7.0"
 }
