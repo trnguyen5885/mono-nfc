@@ -1,0 +1,6 @@
+/Frameworks/*
+!/Frameworks/.gitkeep
+/*.xcworkspace/xcuserdata/
+/*.xcodeproj/xcuserdata/
+/.swiftpm/
+/.build/
