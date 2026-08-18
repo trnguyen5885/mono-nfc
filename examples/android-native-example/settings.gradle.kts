@@ -1,3 +1,7 @@
+val localNfcCoreRepository = providers.gradleProperty("nfcCoreLocalRepo").orNull
+    ?.let(::file)
+    ?: file("sdk/vppos-nfc-maven")
+
 pluginManagement {
     repositories {
         google {
@@ -14,6 +18,7 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        maven(url = uri(localNfcCoreRepository))
         google()
         mavenCentral()
     }
@@ -21,5 +26,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "android-native-example"
 include(":app")
-include(":nfc-core")
-project(":nfc-core").projectDir = file("../../native/android/nfc-core")

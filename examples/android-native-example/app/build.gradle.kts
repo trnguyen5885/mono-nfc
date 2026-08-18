@@ -22,7 +22,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -38,14 +38,17 @@ android {
     }
   buildFeatures {
     compose = true
+    buildConfig = true
   }
 }
 
 dependencies {
-    implementation(project(":nfc-core"))
+    val nfcCoreVersion = providers.gradleProperty("nfcCoreVersion").orElse("1.0.0")
+    implementation("com.vppos.nfc:nfc-core:${nfcCoreVersion.get()}")
     implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.activity.compose)
+  implementation(libs.androidx.webkit)
   implementation(platform(libs.androidx.compose.bom))
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.graphics)

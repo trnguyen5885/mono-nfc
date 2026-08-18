@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">android-native-example</string>
+    <string name="ecert_title">eCert WebView</string>
+    <string name="ecert_web_url">https://app.hilo-ca.vppos.vn</string>
+    <string name="ecert_close">Đóng</string>
+    <string name="ecert_bridge_unavailable">WebView trên thiết bị không hỗ trợ bridge bảo mật.</string>
 </resources>

@@ -1,0 +1,145 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "com.vppos.nfc",
+    "module": "nfc-core",
+    "version": "1.0.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.13"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseVariantReleaseApiPublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "nfc-core-1.0.0.aar",
+          "url": "nfc-core-1.0.0.aar",
+          "size": 100400,
+          "sha512": "017a770c50494f1f7a5a556939c42ac67bcac3e83e64fc3034102822de0a17f26f051b6a35c1cd12797a7347ce3686863344bc5e7fbc9cdfd5c50f8b4efee1e6",
+          "sha256": "0a0632d84df3971c2192d7a6f4b2b111defb9086400b45d16760ff2fdeec3041",
+          "sha1": "800ea955cbc210343bcec19dcf90908320c5d97b",
+          "md5": "24935ec5c6189b4a4ce2bf52ba2527b7"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseRuntimePublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "androidx.appcompat",
+          "module": "appcompat",
+          "version": {
+            "requires": "1.7.0"
+          }
+        },
+        {
+          "group": "androidx.activity",
+          "module": "activity-ktx",
+          "version": {
+            "requires": "1.10.1"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib"
+        },
+        {
+          "group": "org.jmrtd",
+          "module": "jmrtd",
+          "version": {
+            "requires": "0.8.6"
+          }
+        },
+        {
+          "group": "net.sf.scuba",
+          "module": "scuba-sc-android",
+          "version": {
+            "requires": "0.0.26"
+          }
+        },
+        {
+          "group": "org.bouncycastle",
+          "module": "bcprov-jdk18on",
+          "version": {
+            "strictly": "1.84",
+            "requires": "1.84"
+          }
+        },
+        {
+          "group": "org.bouncycastle",
+          "module": "bcpkix-jdk18on",
+          "version": {
+            "strictly": "1.84",
+            "requires": "1.84"
+          }
+        },
+        {
+          "group": "org.bouncycastle",
+          "module": "bcutil-jdk18on",
+          "version": {
+            "strictly": "1.84",
+            "requires": "1.84"
+          }
+        }
+      ],
+      "dependencyConstraints": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.0.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "nfc-core-1.0.0.aar",
+          "url": "nfc-core-1.0.0.aar",
+          "size": 100400,
+          "sha512": "017a770c50494f1f7a5a556939c42ac67bcac3e83e64fc3034102822de0a17f26f051b6a35c1cd12797a7347ce3686863344bc5e7fbc9cdfd5c50f8b4efee1e6",
+          "sha256": "0a0632d84df3971c2192d7a6f4b2b111defb9086400b45d16760ff2fdeec3041",
+          "sha1": "800ea955cbc210343bcec19dcf90908320c5d97b",
+          "md5": "24935ec5c6189b4a4ce2bf52ba2527b7"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseSourcePublication",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "nfc-core-1.0.0-sources.jar",
+          "url": "nfc-core-1.0.0-sources.jar",
+          "size": 22639,
+          "sha512": "4056504e9f9ae9b312d4029a07d1e0a31f526174f89e18717d2656c4f6ca94d0839843e99b9bd907da8abcf75af08d5e67c87a10afc940281cc1053190d3f949",
+          "sha256": "9b926480c884d97910d1a091381ee85adaed7aecbc1827af1ebce92bd36965ec",
+          "sha1": "b351e11f7eefbae72a96393626ef22af426da5b5",
+          "md5": "d489e71cf63ac6bf24063c105b481018"
+        }
+      ]
+    }
+  ]
+}
