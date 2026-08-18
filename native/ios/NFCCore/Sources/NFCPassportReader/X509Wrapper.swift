@@ -5,7 +5,7 @@
 //  Created by Andy Qua on 29/10/2019.
 //
 
-import OpenSSL
+internal import OpenSSL
 
 @available(iOS 13, macOS 10.15, *)
 public enum CertificateType {

@@ -7,7 +7,7 @@
 
 import Foundation
 import OSLog
-import OpenSSL
+internal import OpenSSL
 import CryptoTokenKit
 
 #if !os(macOS)

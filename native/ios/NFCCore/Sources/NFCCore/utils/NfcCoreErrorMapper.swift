@@ -1,11 +1,18 @@
 import Foundation
 
-#if SWIFT_PACKAGE
-import NFCPassportReader
+#if SWIFT_PACKAGE || NFC_CORE_BINARY_BUILD
+internal import NFCPassportReader
 #endif
 
-enum ChipReadErrorMapper {
-  static func mapReadError(_ error: Error, language: String = "en") -> ChipReadError {
+public enum NfcCoreErrorMapper {
+  public static func localized(
+    _ error: NfcCoreError,
+    language: String
+  ) -> NfcCoreError {
+    localizedError(error, language: language)
+  }
+
+  static func mapReadError(_ error: Error, language: String = "en") -> NfcCoreError {
     if let readerError = error as? NFCPassportReaderError {
       return mapReaderError(readerError, language: language)
     }
@@ -37,7 +44,7 @@ enum ChipReadErrorMapper {
     )
   }
 
-  static func localizedError(_ error: ChipReadError, language: String) -> ChipReadError {
+  private static func localizedError(_ error: NfcCoreError, language: String) -> NfcCoreError {
     guard language.lowercased() == "vi" else { return error }
 
     let message: String
@@ -186,13 +193,15 @@ enum ChipReadErrorMapper {
         return "The NFC session was interrupted"
       }
       return "An error occurred while communicating with the NFC chip"
+    @unknown default:
+      return "An error occurred while communicating with the NFC chip"
     }
   }
 
   private static func mapReaderError(
     _ error: NFCPassportReaderError,
     language: String
-  ) -> ChipReadError {
+  ) -> NfcCoreError {
     switch error {
     case .NFCNotSupported:
       return .nfcNotSupported
@@ -219,7 +228,7 @@ enum ChipReadErrorMapper {
   private static func mapWrappedReaderError(
     _ error: Error,
     language: String
-  ) -> ChipReadError {
+  ) -> NfcCoreError {
     let description = error.localizedDescription
 
     if isTimeoutDescription(description) {
@@ -387,6 +396,8 @@ enum ChipReadErrorMapper {
     case .NotYetSupported:
       return "NotYetSupported"
     case .Unknown:
+      return "Unknown"
+    @unknown default:
       return "Unknown"
     }
   }

@@ -4,9 +4,11 @@ use_manual_openssl = [
   ENV["NFCSDK_USE_MANUAL_OPENSSL"],
 ].any? { |value| value.to_s.strip.downcase == "1" }
 
+library_version = File.read(File.expand_path("VERSION", __dir__)).strip
+
 Pod::Spec.new do |s|
   s.name = "NFCCore"
-  s.version = "0.1.0"
+  s.version = library_version
   s.summary = "Native NFC passport and Vietnamese citizen ID protocol core."
   s.homepage = "https://github.com/trnguyen5885/react-native-nitro-nfc"
   s.license = "MIT"
@@ -17,8 +19,9 @@ Pod::Spec.new do |s|
     :tag => "nfc-core-v#{s.version}",
   }
 
-  # CocoaPods compiles the core and its passport-reader fork in one target.
-  # SwiftPM uses two targets and the core conditionally imports the fork there.
+  # This recursive source list includes the Public, Internal and Utils layers
+  # of NFCCore. CocoaPods compiles them with the passport-reader fork in one
+  # target; SwiftPM uses two targets and conditionally imports the fork there.
   s.source_files = [
     "Sources/NFCCore/**/*.swift",
     "Sources/NFCPassportReader/**/*.swift",

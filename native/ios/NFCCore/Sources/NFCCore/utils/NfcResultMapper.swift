@@ -1,15 +1,15 @@
 import Foundation
 
-#if SWIFT_PACKAGE
-import NFCPassportReader
+#if SWIFT_PACKAGE || NFC_CORE_BINARY_BUILD
+internal import NFCPassportReader
 #endif
 
-enum ChipReadResultMapper {
+enum NfcResultMapper {
   static func mapResult(
     passport: NFCPassportModel,
     citizenId: String,
     cachedDg2: CachedDg2? = nil
-  ) -> ChipReadResult {
+  ) -> NfcScanResult {
     let chipImage = cachedDg2.map {
       (data: $0.imageData, mimeType: $0.mimeType)
     } ?? extractChipImage(from: passport)
@@ -22,14 +22,14 @@ enum ChipReadResultMapper {
     let dg14Data = passport.dataGroupsRead[.DG14].map { Data($0.data) } ?? Data()
     let sodData = passport.dataGroupsRead[.SOD].map { Data($0.data) } ?? Data()
 
-    let parsedDg13: DG13ParsedData
+    let parsedDg13: Dg13ParsedData
     if dg13Data.isEmpty {
-      parsedDg13 = DG13ParsedData()
+      parsedDg13 = Dg13ParsedData()
     } else {
-      parsedDg13 = DG13Parser.parse(dg13Data, fallbackIssuePlace: "")
+      parsedDg13 = Dg13Parser.parse(dg13Data, fallbackIssuePlace: "")
     }
 
-    let normalizedGender = DG13Parser.normalizeGender(passport.gender)
+    let normalizedGender = Dg13Parser.normalizeGender(passport.gender)
     let finalGender =
       parsedDg13.gender.isEmpty ? normalizedGender : parsedDg13.gender
     let mrzExpireDate = MrzUtils.formatDate(passport.documentExpiryDate)
@@ -42,7 +42,7 @@ enum ChipReadResultMapper {
     let finalFullName =
       parsedDg13.fullName.isEmpty ? mrzFullName : parsedDg13.fullName
 
-    return ChipReadResult(
+    return NfcScanResult(
       citizenId: citizenId,
       fullName: finalFullName,
       dob: MrzUtils.formatDate(passport.dateOfBirth),
@@ -77,21 +77,25 @@ enum ChipReadResultMapper {
       // convert it only when a decoded UIImage is available. If conversion is
       // unavailable, preserve the original bytes and MIME type for callers
       // that support JPEG2000.
+      #if os(iOS)
       if dg2.imageDataType == 1,
          let image = passport.passportImage,
          let imageData = image.jpegData(compressionQuality: 0.8) {
         return (imageData, "image/jpeg")
       }
+      #endif
 
       return (Data(dg2.imageData), "image/jp2")
     }
 
     // Keep a defensive fallback for reader versions/cards where DG2 exposes a
     // decoded passportImage but not the raw imageData property.
+    #if os(iOS)
     if let image = passport.passportImage,
        let imageData = image.jpegData(compressionQuality: 0.8) {
       return (imageData, "image/jpeg")
     }
+    #endif
 
     return (Data(), "")
   }

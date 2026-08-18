@@ -7,7 +7,7 @@
 
 import Foundation
 import OSLog
-import OpenSSL
+internal import OpenSSL
 import CryptoTokenKit
 
 @available(iOS 13, macOS 10.15, *)

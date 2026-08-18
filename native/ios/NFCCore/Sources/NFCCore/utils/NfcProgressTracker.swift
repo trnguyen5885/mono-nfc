@@ -1,10 +1,10 @@
 import Foundation
 
-#if SWIFT_PACKAGE
-import NFCPassportReader
+#if SWIFT_PACKAGE || NFC_CORE_BINARY_BUILD
+internal import NFCPassportReader
 #endif
 
-final class ChipReadProgressTracker {
+final class NfcProgressTracker {
   private struct Allocation {
     let start: Int
     let width: Int

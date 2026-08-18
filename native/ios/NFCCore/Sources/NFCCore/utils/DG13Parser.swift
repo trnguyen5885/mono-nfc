@@ -1,6 +1,6 @@
 import Foundation
 
-struct DG13ParsedData {
+struct Dg13ParsedData {
   var fullName: String = ""
   var gender: String = ""
   var permanentAddress: String = ""
@@ -19,7 +19,7 @@ private struct ASN1Node {
   let nextOffset: Int
 }
 
-enum DG13Parser {
+enum Dg13Parser {
   private static let tagClassUniversal = 0
   private static let tagClassApplication = 1
   private static let outputDateFormatter: DateFormatter = {
@@ -38,17 +38,17 @@ enum DG13Parser {
   static func parse(
     _ data: Data,
     fallbackIssuePlace: String = ""
-  ) -> DG13ParsedData {
+  ) -> Dg13ParsedData {
     let bytes = [UInt8](data)
     guard !bytes.isEmpty,
           let fields = parseStructuredFields(bytes)
     else {
-      return DG13ParsedData(issuePlace: fallbackIssuePlace)
+      return Dg13ParsedData(issuePlace: fallbackIssuePlace)
     }
 
     let candidates = Array(Set(fields.values.flatMap { $0 }))
 
-    return DG13ParsedData(
+    return Dg13ParsedData(
       fullName: normalizeFullName(fields[0x02]?.first ?? ""),
       gender: normalizeGender(fields[0x04]?.first ?? ""),
       permanentAddress: fields[0x09]?.first ?? "",

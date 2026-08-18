@@ -1,13 +1,27 @@
 import Foundation
 
-#if SWIFT_PACKAGE
-import NFCPassportReader
+#if SWIFT_PACKAGE || NFC_CORE_BINARY_BUILD
+internal import NFCPassportReader
 #endif
 
-enum ChipReadDisplayUtils {
-  static func getDisplayString(
+struct NfcUiText {
+  private let isVietnamese: Bool
+
+  init(language: String) {
+    isVietnamese = language.lowercased() == "vi"
+  }
+
+  var initializing: String {
+    isVietnamese ? "Đang khởi tạo NFC..." : "Initializing NFC..."
+  }
+
+  var completed: String {
+    isVietnamese ? "Đọc NFC thành công" : "NFC read completed successfully"
+  }
+
+  static func displayString(
     from message: NFCViewDisplayMessage,
-    tracker: ChipReadProgressTracker,
+    tracker: NfcProgressTracker,
     language: String = "en"
   ) -> String {
     let isVietnamese = language.lowercased() == "vi"
@@ -31,7 +45,7 @@ enum ChipReadDisplayUtils {
     case .successfulRead:
       return isVietnamese ? "Đọc thành công!" : "Read successfully!"
     case .error(let error):
-      return ChipReadErrorMapper.localizedReaderErrorMessage(error, language: language)
+      return NfcCoreErrorMapper.localizedReaderErrorMessage(error, language: language)
     default:
       return isVietnamese ? "Vui lòng giữ căn cước công dân yên" : "Please keep the citizen ID card still"
     }
@@ -39,8 +53,8 @@ enum ChipReadDisplayUtils {
 
   static func handleInternalProgress(
     _ message: NFCViewDisplayMessage,
-    tracker: ChipReadProgressTracker,
-    progressListener: ChipReadProgressListener,
+    tracker: NfcProgressTracker,
+    progressListener: NfcProgressListener,
     language: String = "en"
   ) {
     let isVietnamese = language.lowercased() == "vi"

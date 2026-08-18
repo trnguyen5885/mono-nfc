@@ -4,7 +4,7 @@
 //  Created by Andy Qua on 14/06/2019.
 //
 
-import OpenSSL
+internal import OpenSSL
 
 @available(iOS 13, macOS 10.15, *)
 class DataGroupParser {
