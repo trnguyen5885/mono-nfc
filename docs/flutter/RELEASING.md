@@ -26,7 +26,7 @@ nfc-core Android Maven/AAR + NFCCore iOS CocoaPods
 ```
 
 - Android implementation fallback về
-  `com.identity.nfc:nfc-core:<nfcCoreVersion>`; artifact đó phải publish trước.
+  `com.vppos.nfc:nfc-core:<nfcCoreVersion>`; artifact đó phải publish trước.
 - iOS implementation phụ thuộc `NFCCore ~> 0.1`; bump minor/major core phải
   cập nhật constraint podspec và test Pod resolution.
 - `NFCCore` hiện là CocoaPods source pod, chưa phải XCFramework binary mặc định.
@@ -35,6 +35,25 @@ nfc-core Android Maven/AAR + NFCCore iOS CocoaPods
 
 Không publish `identity_nfc` khi dependency constraint không resolve được từ
 registry của consumer.
+
+### Android local Maven artifact
+
+`nfcCoreVersion` bắt buộc theo SemVer 2.0.0 (ví dụ `1.0.0` hoặc
+`1.1.0-rc.1`); publisher từ chối `SNAPSHOT`, `v` prefix và leading zero.
+Tạo artifact smoke test bằng:
+
+```sh
+./examples/android-native-example/gradlew \
+  -p native/android/nfc-core \
+  publishNfcCoreLocal \
+  -PnfcCoreVersion=1.0.0
+```
+
+Archive hoặc đồng bộ đầy đủ thư mục
+`native/android/nfc-core/build/local-maven`, bao gồm AAR, POM, `.module` và
+sources JAR. Flutter host phải resolve coordinate
+`com.vppos.nfc:nfc-core:1.0.0` từ repository đó trước khi chạy Android
+consumer smoke test.
 
 ## Release gates
 
@@ -147,7 +166,7 @@ flutter pub add identity_nfc:^<release-version>
 flutter pub get
 ```
 
-Cấu hình Android Maven repository và iOS CocoaPods Specs source do SDK
+Cấu hình Android Maven repository và iOS CocoaPods Specs source do library
 distributor cung cấp, rồi cấu hình NFC permission/entitlement theo
 [integration guide](INTEGRATION.md). Build release:
 

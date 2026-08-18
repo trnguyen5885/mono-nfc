@@ -1,4 +1,4 @@
-# NFC SDK monorepo architecture
+# NFC Library monorepo architecture
 
 ## Purpose
 
@@ -21,12 +21,13 @@ owner of NFC protocol, cryptography, or passport parsing.
 │   ├── identity_nfc_android/             # Android Flutter adapter
 │   └── identity_nfc_ios/                 # iOS Flutter adapter
 ├── examples/
-│   └── react-native-example/             # Local RN consumer/harness
+│   ├── android-native-example/            # Native Android source/Maven smoke test
+│   └── react-native-example/              # Local RN consumer/harness
 ├── docs/
 │   ├── architecture/                     # Architecture, parity and dependency records
 │   ├── flutter/                          # Flutter adapter documentation
 │   └── react-native/                     # React Native adapter documentation
-├── vendor/                               # Upstream reference material, not compiled by SDK
+├── vendor/                               # Upstream reference material, not compiled by the library
 ├── package.json                          # Private Yarn workspace root
 └── turbo.json
 ```
@@ -82,16 +83,19 @@ adapter change can be tested together.
 
 | Consumer | Development dependency | Release dependency |
 |---|---|---|
-| RN Android adapter | Gradle project `:nfc-core` from `native/android/nfc-core` | `com.identity.nfc:nfc-core:<version>` |
+| RN Android adapter | Gradle project `:nfc-core` from `native/android/nfc-core` | `com.vppos.nfc:nfc-core:<version>` |
 | RN iOS adapter | Local `NFCCore` Pod in the example Podfile | `NFCCore ~> <version>` from a pod repository |
 | RN JavaScript | Yarn workspace `react-native-nitro-nfc` | npm package `react-native-nitro-nfc` |
-| Flutter Android adapter | Gradle project `:nfc-core` from `native/android/nfc-core` | `com.identity.nfc:nfc-core:<version>` |
+| Flutter Android adapter | Gradle project `:nfc-core` from `native/android/nfc-core` | `com.vppos.nfc:nfc-core:<version>` |
 | Flutter iOS adapter | Local `NFCCore` Pod in the Flutter example Podfile | `NFCCore ~> <version>` from a pod repository |
 | Flutter Dart | `pubspec_overrides.yaml` path overrides inside `packages-flutter` | versioned pub packages |
 
 The Android adapter falls back to the Maven coordinate when a consuming app
-does not include the local Gradle project. This requires a published core
-artifact before external release.
+does not include the local Gradle project. The coordinate is
+`com.vppos.nfc:nfc-core:<SemVer>`; external consumers must configure the Maven
+repository holding the complete AAR, POM, Gradle module metadata and sources
+JAR. `android-native-example` resolves the pinned `1.0.0` artifact from its
+bundled local Maven repository, mirroring a third-party host app.
 
 ## OpenSSL ownership
 
@@ -129,7 +133,9 @@ Android and iPhone devices.
 
 ## Release order
 
-1. Validate and publish Android `nfc-core` AAR/Maven artifact.
+1. Validate and publish Android `nfc-core` AAR/Maven artifact with
+   `publishNfcCoreLocal -PnfcCoreVersion=<SemVer>`; archive/sync the complete
+   local Maven repository for external consumption.
 2. Validate and publish iOS `NFCCore` Pod/SPM artifact.
 3. Release the React Native npm adapter with compatible native-core versions.
 4. Release the Flutter adapter only after it passes the same core parity matrix.

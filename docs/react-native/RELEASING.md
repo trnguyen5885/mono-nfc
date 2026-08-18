@@ -15,7 +15,7 @@ nfc-core Android (Maven/AAR) + NFCCore iOS (CocoaPods)
 
 Package npm phải tham chiếu đúng native core version:
 
-- Android adapter fallback về `com.identity.nfc:nfc-core:<nfcCoreVersion>`.
+- Android adapter fallback về `com.vppos.nfc:nfc-core:<nfcCoreVersion>`.
 - `NitroNfc.podspec` khai báo `NFCCore ~> 0.1`; bump minor/major core phải cập
   nhật constraint này.
 - Podspec React Native dùng git tag trùng package version (`:tag => version`),
@@ -47,23 +47,27 @@ là release blocker. Không bypass những gate này chỉ để publish npm.
 `native/android/nfc-core` có `maven-publish` với coordinate:
 
 ```text
-groupId:    com.identity.nfc
+groupId:    com.vppos.nfc
 artifactId: nfc-core
-version:    nfcCoreVersion (mặc định 0.1.0-SNAPSHOT)
+version:    nfcCoreVersion (Semantic Version bắt buộc)
 ```
 
-Trong CI release, set `nfcCoreVersion` thành version immutable, build release
-AAR và publish vào Maven repository riêng của SDK. Repository URL/credentials
-phải là CI secrets, không hard-code trong `build.gradle`.
+Trong CI release, set `nfcCoreVersion` thành version immutable theo SemVer 2.0.0.
+Không dùng `SNAPSHOT`, `v` prefix hoặc số có leading zero. Cấu hình hiện tại
+publish vào local Maven; CI cần archive hoặc đồng bộ **toàn bộ** repository đó
+lên Maven repository riêng của library. URL/credentials của remote repository phải
+là CI secrets, không hard-code trong `build.gradle`.
 
 Smoke test publication trong release environment:
 
 ```sh
-# Chạy từ Gradle release build có include :nfc-core
-./gradlew :nfc-core:assembleRelease :nfc-core:publishToMavenLocal \
-  -PnfcCoreVersion=<core-version>
+./examples/android-native-example/gradlew \
+  -p native/android/nfc-core \
+  publishNfcCoreLocal \
+  -PnfcCoreVersion=1.0.0
 ```
 
+Kết quả nằm trong `native/android/nfc-core/build/local-maven/com/vppos/nfc/`.
 Consumer test phải resolve Maven coordinate vừa publish, không dùng path/local
 project trong monorepo.
 
@@ -126,7 +130,7 @@ Chọn semantic version:
 
 - `patch`: sửa lỗi không đổi public contract.
 - `minor`: thêm capability/API tương thích ngược.
-- `major`: đổi public API, min SDK, native core contract hoặc OpenSSL policy.
+- `major`: đổi public API, minimum Android API, native core contract hoặc OpenSSL policy.
 
 Script hiện tại:
 

@@ -7,10 +7,10 @@ và `NFCCore`, không đi qua React Native/Nitro.
 
 ## 1. Điều kiện trước khi tích hợp
 
-- Dart SDK theo constraint của package (hiện là `^3.6.2`) và Flutter `>=3.3.0`.
+- Dart toolchain theo constraint của package (hiện là `^3.6.2`) và Flutter `>=3.3.0`.
 - Android: thiết bị thật có NFC, Android API 24 trở lên, NFC bật.
 - iOS: thiết bị thật iOS 15 trở lên, có NFC Tag Reading entitlement hợp lệ.
-- SDK distributor phải publish Android `nfc-core` Maven artifact và iOS
+- Library distributor phải publish Android `nfc-core` Maven artifact và iOS
   `NFCCore` CocoaPods pod (hiện là source pod) vào repository mà app host truy
   cập được.
 
@@ -22,7 +22,7 @@ Khai báo chỉ package public trong `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  identity_nfc: ^<sdk-version>
+  identity_nfc: ^<library-version>
 ```
 
 Sau đó chạy:
@@ -34,10 +34,10 @@ flutter pub get
 Không thêm trực tiếp `identity_nfc_android`, `identity_nfc_ios` hoặc
 `identity_nfc_platform_interface` vào app. Không mang
 `pubspec_overrides.yaml` từ monorepo vào production app; file đó chỉ phục vụ
-phát triển đồng thời SDK.
+phát triển đồng thời library.
 
 Nếu package được publish lên private pub server, cấu hình hosted source/credential
-theo repository của SDK distributor trước khi chạy `flutter pub get`.
+theo repository của library distributor trước khi chạy `flutter pub get`.
 
 ## 3. Cấu hình Android
 
@@ -60,8 +60,26 @@ android {
 ```
 
 Khi dùng core production, Gradle host phải có Maven repository chứa
-`com.identity.nfc:nfc-core`. URL/credentials do SDK distributor cung cấp.
+`com.vppos.nfc:nfc-core`. URL/credentials do library distributor cung cấp.
 Không include local project `:nfc-core` trong app ngoài monorepo.
+
+Khi nhận local Maven repository từ library distributor, copy nguyên thư mục Maven
+và thêm vào `android/settings.gradle` của Flutter host trước `google()` và
+`mavenCentral()`:
+
+```groovy
+dependencyResolutionManagement {
+  repositories {
+    maven { url uri("/absolute/path/to/vppos-nfc-maven") }
+    google()
+    mavenCentral()
+  }
+}
+```
+
+`identity_nfc_android` sẽ resolve `com.vppos.nfc:nfc-core:<nfcCoreVersion>`
+khi không có source project. Version phải là SemVer đã publish, chẳng hạn
+`1.0.0`; không dùng `SNAPSHOT` hoặc version động.
 
 Khi `IdentityNfc.scan()` được gọi, plugin mở native Android bottom sheet có
 hướng dẫn, progress, Cancel và Retry. App Flutter không cần tự mở Activity.

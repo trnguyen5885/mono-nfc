@@ -31,6 +31,15 @@ perform a production-client migration.
 | Full RN iOS simulator build | blocked by pre-existing toolchain issue | Xcode 26 + `OpenSSL-Universal` 1.1 fails inside Nitro C++ interoperability. |
 | Physical NFC scan parity | pending | Requires approved non-sensitive card fixture and physical Android/iPhone. |
 
+## Android artifact packaging update
+
+Android core is now a breaking namespace release: Kotlin/Android namespace
+`com.vppos.nfc.core`, Maven coordinate `com.vppos.nfc:nfc-core:<SemVer>`.
+`publishNfcCoreLocal` runs release unit tests and publishes the AAR, POM,
+Gradle module metadata and sources JAR to
+`native/android/nfc-core/build/local-maven`. The native Android example can
+test the external dependency branch with `-PuseLocalNfcCore=true`.
+
 ## Outstanding gate after monorepo restructure
 
 The monorepo restructure was performed by explicit owner decision before this

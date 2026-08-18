@@ -12,7 +12,7 @@ chip, PACE, parse dữ liệu và quản lý cache ngắn hạn.
 - iOS: thiết bị thật iOS 15 trở lên, Apple Developer team được cấp quyền NFC
   Tag Reading.
 - Artifact `nfc-core` (Maven/AAR) và `NFCCore` CocoaPods pod (hiện là source
-  pod) phải đã được SDK distributor publish ở repository mà ứng dụng host có
+  pod) phải đã được library distributor publish ở repository mà ứng dụng host có
   thể truy cập.
 
 Emulator Android và iOS Simulator không thể thay thế kiểm thử chip NFC thật.
@@ -55,12 +55,31 @@ android {
 ```
 
 Khi dùng artifact production, Gradle phải biết Maven repository chứa
-`com.identity.nfc:nfc-core`. URL và credentials do SDK distributor cung cấp;
+`com.vppos.nfc:nfc-core`. URL và credentials do library distributor cung cấp;
 không thêm local Gradle project `:nfc-core` vào app production.
+
+Để thử library từ local Maven, publisher đưa **toàn bộ** thư mục Maven cho host,
+không chỉ file AAR. Trong `android/settings.gradle` của app host, thêm repository
+trước `google()` và `mavenCentral()`:
+
+```groovy
+dependencyResolutionManagement {
+  repositories {
+    maven { url uri("/absolute/path/to/vppos-nfc-maven") }
+    google()
+    mavenCentral()
+  }
+}
+```
+
+Adapter sẽ resolve `com.vppos.nfc:nfc-core:<nfcCoreVersion>` khi host không
+include `:nfc-core`. Pin một version SemVer đã publish, ví dụ
+`1.0.0`; không dùng version động hoặc `SNAPSHOT`.
 
 Trước khi gọi scan, người dùng cần bật NFC. `NFCSDK.isAvailable()` trả `false`
 khi không có adapter hoặc native module không khả dụng. Khi adapter có nhưng
-NFC tắt, scan trả lỗi `NFCDisabled`.
+NFC tắt, Android bottom sheet báo event `NFCDisabled`, cho phép mở Settings và
+giữ Promise pending để tiếp tục cùng phiên scan.
 
 ## 4. Cấu hình iOS
 
@@ -138,7 +157,7 @@ export async function scanCitizenCard(citizenId: string) {
     });
   } catch (error) {
     if (error instanceof NFCSDKError) {
-      // Ví dụ: InvalidCitizenId, NFCDisabled, PACEError, UserCanceled.
+      // Ví dụ: InvalidCitizenId hoặc UserCanceled.
       throw error;
     }
     throw error;
@@ -179,15 +198,20 @@ Tên data group được hỗ trợ: `IMAGE`, `DG1`, `DG2`, `DG13`, `DG14`, `SOD
 | Code | Cách xử lý UX khuyến nghị |
 | --- | --- |
 | `NFCNotSupported` | Thông báo thiết bị không hỗ trợ NFC. |
-| `NFCDisabled` | Hướng dẫn bật NFC rồi retry. |
+| `NFCDisabled` | Bottom sheet giữ phiên scan, hiển thị nút mở NFC Settings và tự quay lại chờ thẻ khi NFC đã bật. |
 | `InvalidCitizenId` | Yêu cầu nhập lại số định danh. |
 | `UserCanceled` | Đóng flow nhẹ nhàng, không coi là lỗi hệ thống. |
 | `InvalidMRZKey`, `PACEError` | Kiểm tra đúng CAN/CCCD và thử lại. |
 | `ConnectionError`, `SessionTimeout` | Giữ thẻ ổn định, tháo ốp dày và thử lại. |
 | `ScanInProgress` | Disable nút bắt đầu scan cho đến khi Promise hoàn tất. |
 
-Một error progress event có thể được gửi trước khi Promise reject. Chỉ xử lý
-một nguồn event cho mỗi UI state để không hiện lỗi hai lần.
+`NFCDisabled`, `InvalidMRZKey`, `PACEError`, `NoConnectedTag`,
+`ConnectionError` và `SessionTimeout` là error có thể phục hồi trên Android:
+bottom sheet vẫn mở để người dùng vào Settings hoặc thử lại, nên Promise vẫn
+pending. Event có thêm `error.recoverable` và `error.suggestedAction` để app
+host phản chiếu trạng thái nếu cần. `UserCanceled` và lỗi terminal sẽ reject
+Promise một lần. Chỉ xử lý một nguồn event cho mỗi UI state để không hiện lỗi
+hai lần.
 
 ## 8. Checklist trước production
 

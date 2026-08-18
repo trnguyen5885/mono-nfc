@@ -66,6 +66,11 @@ Android example include Gradle project `:nfc-core` từ
 Podfile cho development; consumer release dùng `NFCCore ~> <version>` từ pod
 repository sau khi artifact được publish.
 
+Android consumer release resolve Maven coordinate
+`com.vppos.nfc:nfc-core:<SemVer>`. Publisher tạo repository local chuẩn Maven
+bằng `publishNfcCoreLocal`; phân phối nguyên thư mục repository (AAR, POM,
+`.module`, sources JAR), không phân phối AAR đơn lẻ.
+
 ## iOS OpenSSL
 
 `identity_nfc_ios` phụ thuộc `NFCCore`; không link OpenSSL trực tiếp.
