@@ -1,4 +1,4 @@
-package com.identity.nfc.core.utils
+package com.vppos.nfc.core.utils
 
 import java.util.Calendar
 import java.util.Locale

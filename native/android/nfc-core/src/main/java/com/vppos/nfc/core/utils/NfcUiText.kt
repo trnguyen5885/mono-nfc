@@ -1,4 +1,4 @@
-package com.identity.nfc.core.utils
+package com.vppos.nfc.core.utils
 
 /** User-facing strings for the native NFC reader. */
 class NfcUiText(language: String) {

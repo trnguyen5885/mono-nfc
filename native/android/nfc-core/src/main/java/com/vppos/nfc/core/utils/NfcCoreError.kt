@@ -1,7 +1,7 @@
-package com.identity.nfc.core.utils
+package com.vppos.nfc.core.utils
 
 import android.nfc.TagLostException
-import com.identity.nfc.core.NfcCoreException
+import com.vppos.nfc.core.NfcCoreException
 import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeoutException

@@ -1,14 +1,33 @@
+import org.gradle.api.publish.maven.tasks.AbstractPublishToMaven
+
 plugins {
   id 'com.android.library'
   id 'org.jetbrains.kotlin.android'
   id 'maven-publish'
 }
 
-group = 'com.identity.nfc'
-version = providers.gradleProperty('nfcCoreVersion').getOrElse('0.1.0-SNAPSHOT')
+group = 'com.vppos.nfc'
+
+def nfcCoreVersion = providers.gradleProperty('nfcCoreVersion').orNull
+def semanticVersionPattern = ~/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:(?:0|[1-9]\d*)|(?:[0-9]*[A-Za-z-][0-9A-Za-z-]*))(?:\.(?:(?:0|[1-9]\d*)|(?:[0-9]*[A-Za-z-][0-9A-Za-z-]*)))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/
+def hasMavenSnapshotIdentifier = nfcCoreVersion?.tokenize('-.+')?.any { it.equalsIgnoreCase('SNAPSHOT') }
+
+if (nfcCoreVersion != null && (!(nfcCoreVersion ==~ semanticVersionPattern) || hasMavenSnapshotIdentifier)) {
+  throw new GradleException(
+    "nfcCoreVersion must be a Semantic Version without a SNAPSHOT identifier, for example 1.0.0 or 1.1.0-rc.1. Was: ${nfcCoreVersion}",
+  )
+}
+
+// Source-project consumers do not need a publication version. Publishing tasks
+// enforce -PnfcCoreVersion before writing an artifact.
+version = nfcCoreVersion ?: '0.0.0-dev.0'
+
+def localMavenRepository = providers.gradleProperty('nfcCoreLocalRepo')
+  .map { file(it) }
+  .getOrElse(layout.buildDirectory.dir('local-maven').get().asFile)
 
 android {
-  namespace 'com.identity.nfc.core'
+  namespace 'com.vppos.nfc.core'
   compileSdk 36
 
   defaultConfig {
@@ -17,7 +36,7 @@ android {
   }
 
   buildFeatures {
-    buildConfig false
+    buildConfig true
   }
 
   compileOptions {
@@ -37,6 +56,8 @@ android {
 }
 
 dependencies {
+  implementation 'androidx.appcompat:appcompat:1.7.0'
+  implementation 'androidx.activity:activity-ktx:1.10.1'
   implementation 'org.jetbrains.kotlin:kotlin-stdlib'
   implementation 'org.jmrtd:jmrtd:0.8.6'
   implementation 'net.sf.scuba:scuba-sc-android:0.0.26'
@@ -55,6 +76,7 @@ dependencies {
       strictly '1.84'
     }
   }
+  testImplementation 'junit:junit:4.13.2'
 }
 
 afterEvaluate {
@@ -66,6 +88,32 @@ afterEvaluate {
         artifactId = 'nfc-core'
         version = project.version
       }
+    }
+    repositories {
+      maven {
+        name = 'localBuild'
+        url = uri(localMavenRepository)
+      }
+    }
+  }
+
+    tasks.named('publishReleasePublicationToLocalBuildRepository') {
+        dependsOn 'testReleaseUnitTest'
+    }
+
+    tasks.register('publishNfcCoreLocal') {
+        group = 'publishing'
+        description = 'Runs release unit tests and publishes nfc-core to the localBuild Maven repository.'
+        dependsOn 'publishReleasePublicationToLocalBuildRepository'
+    }
+}
+
+tasks.withType(AbstractPublishToMaven).configureEach {
+  doFirst {
+    if (nfcCoreVersion == null) {
+      throw new GradleException(
+        'Publishing nfc-core requires -PnfcCoreVersion=<semantic-version>, for example -PnfcCoreVersion=1.0.0.',
+      )
     }
   }
 }
