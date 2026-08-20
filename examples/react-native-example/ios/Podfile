@@ -15,6 +15,10 @@ if linkage != nil
 end
 
 target 'NitroNfcExample' do
+  # Keep local monorepo development source-based. Published npm packages do not
+  # set this flag and instead link their bundled XCFrameworks.
+  use_source_core = ENV.fetch('NITRO_NFC_USE_SOURCE_CORE', '1') != '0'
+  ENV['NITRO_NFC_USE_SOURCE_CORE'] = '1' if use_source_core
   use_manual_openssl =
     ENV['NITRO_NFC_USE_MANUAL_OPENSSL'] == '1' ||
     ENV['NFCSDK_USE_MANUAL_OPENSSL'] == '1'
@@ -22,7 +26,7 @@ target 'NitroNfcExample' do
   # The example simulates a host app that already owns OpenSSL. A real host
   # can replace this pod with its compatible existing provider.
   pod 'OpenSSL-Universal', '~> 1.1' if use_manual_openssl
-  pod 'NFCCore', :path => '../../../native/ios/NFCCore'
+  pod 'NFCCore', :path => '../../../native/ios/NFCCore' if use_source_core
   config = use_native_modules!
 
   use_react_native!(
