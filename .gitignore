@@ -82,6 +82,17 @@ android/keystores/debug.keystore
 # React Native package build output
 /packages/react-native-nitro-nfc/lib/
 
+# Release-only native artifacts staged into the npm package.
+/packages/react-native-nitro-nfc/android/libs/nfc-core.aar
+/packages/react-native-nitro-nfc/ios/Frameworks/
+/packages/react-native-nitro-nfc/native-bundle.json
+
+# Flutter release-only native artifacts staged into Pub packages.
+/packages-flutter/identity_nfc_android/android/libs/nfc-core.aar
+/packages-flutter/identity_nfc_android/native-bundle.json
+/packages-flutter/identity_nfc_ios/ios/Frameworks/
+/packages-flutter/identity_nfc_ios/native-bundle.json
+
 # React Native Codegen
 ios/generated
 android/generated
