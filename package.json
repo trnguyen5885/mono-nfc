@@ -14,7 +14,9 @@
     "lint": "yarn workspace react-native-nitro-nfc lint",
     "test": "yarn workspace react-native-nitro-nfc test",
     "build:android": "turbo run build:android --filter=react-native-nitro-nfc",
-    "build:ios": "turbo run build:ios --filter=react-native-nitro-nfc"
+    "build:ios": "turbo run build:ios --filter=react-native-nitro-nfc",
+    "flutter:bundle-native": "bash packages-flutter/scripts/bundle-native-artifacts.sh",
+    "flutter:verify-native-bundles": "node packages-flutter/scripts/verify-native-bundles.mjs"
   },
   "devDependencies": {
     "turbo": "^2.9.16"

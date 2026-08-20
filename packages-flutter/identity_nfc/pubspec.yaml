@@ -1,6 +1,6 @@
 name: identity_nfc
 description: Flutter API for reading Vietnamese citizen ID NFC chips with NFCSDK native cores.
-version: 0.1.0-dev.1
+version: 1.0.0
 homepage: https://github.com/trnguyen5885/react-native-nitro-nfc
 
 environment:
@@ -11,11 +11,11 @@ dependencies:
   flutter:
     sdk: flutter
   identity_nfc_android:
-    ^0.1.0-dev.1
+    ^1.0.0
   identity_nfc_ios:
-    ^0.1.0-dev.1
+    ^1.0.0
   identity_nfc_platform_interface:
-    ^0.1.0-dev.1
+    ^1.0.0
 
 dev_dependencies:
   flutter_test:
