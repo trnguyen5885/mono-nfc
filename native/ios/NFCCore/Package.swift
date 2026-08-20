@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
   name: "NFCCore",
-  platforms: [.iOS(.v15)],
+  platforms: [.iOS(.v15), .macOS(.v11)],
   products: [
     .library(name: "NFCCore", targets: ["NFCCore"]),
   ],
@@ -23,7 +23,13 @@ let package = Package(
     .target(
       name: "NFCCore",
       dependencies: ["NFCPassportReader"],
-      path: "Sources/NFCCore"
+      path: "Sources/NFCCore",
+      swiftSettings: [.define("NFC_CORE_BINARY_BUILD")]
+    ),
+    .testTarget(
+      name: "NFCCoreTests",
+      dependencies: ["NFCCore"],
+      path: "Tests/NFCCoreTests"
     ),
   ]
 )

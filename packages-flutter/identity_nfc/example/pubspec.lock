@@ -73,28 +73,28 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "0.1.0-dev.1"
+    version: "1.0.0"
   identity_nfc_android:
     dependency: "direct overridden"
     description:
       path: "../../identity_nfc_android"
       relative: true
     source: path
-    version: "0.1.0-dev.1"
+    version: "1.0.0"
   identity_nfc_ios:
     dependency: "direct overridden"
     description:
       path: "../../identity_nfc_ios"
       relative: true
     source: path
-    version: "0.1.0-dev.1"
+    version: "1.0.0"
   identity_nfc_platform_interface:
     dependency: "direct overridden"
     description:
       path: "../../identity_nfc_platform_interface"
       relative: true
     source: path
-    version: "0.1.0-dev.1"
+    version: "1.0.0"
   leak_tracker:
     dependency: transitive
     description:

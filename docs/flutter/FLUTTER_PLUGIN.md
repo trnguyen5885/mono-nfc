@@ -3,7 +3,7 @@
 For consumer application setup, see the [Flutter integration guide](INTEGRATION.md).
 For package release order and publication, see the [Flutter release guide](RELEASING.md).
 
-`identity_nfc` là Flutter adapter chính thức của NFCSDK. Plugin được scaffold
+`identity_nfc` là Flutter adapter chính thức của NFC Library. Plugin được scaffold
 bằng Flutter CLI và đặt trong `packages-flutter/` theo federation:
 
 ```text
@@ -17,6 +17,26 @@ identity_nfc_platform_interface      Dart models and adapter contract
 
 Không package nào trong nhánh Flutter import `react-native-nitro-nfc`, Nitro,
 React Native hoặc generated bridge type.
+
+## Native UI ownership
+
+Android giữ UI scan trong `nfc-core`, cùng implementation với adapter React
+Native:
+
+```text
+Dart → Method/Event Channel → identity_nfc_android → NfcScanUi → NfcScanUiActivity
+```
+
+`identity_nfc_android` chỉ chuyển request, progress, result và error giữa
+Flutter với `NfcScanUi`; plugin không sở hữu Activity, BottomSheet hoặc Android
+resource NFC riêng. Vì vậy Cancel, Retry và lifecycle của UI có cùng hành vi
+với native core.
+
+Trên iOS, adapter gọi `NFCCore` và hệ điều hành hiển thị CoreNFC system sheet:
+
+```text
+Dart → Method/Event Channel → identity_nfc_ios → NFCCore → CoreNFC system sheet
+```
 
 ## Public API
 
@@ -61,20 +81,24 @@ flutter build apk --debug
 package Flutter local. Khi publish, dependency trong `pubspec.yaml` là version
 constraint, không phải path dependency.
 
-Android example include Gradle project `:nfc-core` từ
-`native/android/nfc-core`. iOS example phải khai báo `NFCCore` local trong
-Podfile cho development; consumer release dùng `NFCCore ~> <version>` từ pod
-repository sau khi artifact được publish.
+Trong monorepo, Android example dùng `:nfc-core` và iOS example dùng NFCCore
+source khi `IDENTITY_NFC_USE_SOURCE_CORE` không phải `0`. Đây chỉ là development
+setup. Production Pub packages stage AAR/XCFramework đã kiểm tra từ cùng native
+release output; consumer không resolve NFC Maven coordinate hoặc NFCCore pod.
+
+Đặt `IDENTITY_NFC_USE_SOURCE_CORE=0` khi build example để kiểm tra đúng luồng
+bundled mà host nhận từ Pub registry.
 
 ## iOS OpenSSL
 
-`identity_nfc_ios` phụ thuộc `NFCCore`; không link OpenSSL trực tiếp.
+`identity_nfc_ios` không link OpenSSL pod trực tiếp.
 
-- Mặc định NFCCore kéo `OpenSSL-Universal`.
-- Nếu host đã quản lý OpenSSL, đặt `USE_MANUAL_OPENSSL=1` trước
-  `pod install` và host phải cung cấp module `OpenSSL` tương thích.
+- Mặc định plugin embed self-contained NFCCore với OpenSSL private.
+- Nếu host đã quản lý OpenSSL, đặt `IDENTITY_NFC_USE_MANUAL_OPENSSL=1` trước
+  `pod install`; host phải cung cấp đúng một module `OpenSSL` tương thích.
 
-Không link thêm một OpenSSL binary khác khi default mode đang bật.
+Không link thêm provider OpenSSL khi default mode đang bật và không link đồng
+thời hai NFCCore variants.
 
 ## NFC requirements
 

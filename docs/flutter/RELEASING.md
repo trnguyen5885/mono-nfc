@@ -1,6 +1,6 @@
-# Phát hành Flutter plugin federation
+# Phát hành Flutter NFC federation
 
-Runbook này áp dụng cho Flutter federation trong `packages-flutter/`:
+Flutter federation được phát hành đồng bộ ở `1.0.0`:
 
 ```text
 identity_nfc_platform_interface
@@ -10,178 +10,85 @@ identity_nfc_android + identity_nfc_ios
 identity_nfc
 ```
 
-Consumer Flutter chỉ cài `identity_nfc`. Package public này phải publish sau
-platform interface và hai implementation package.
+Hai implementation package mang native core bên trong Pub archive. Không
+publish Android Maven artifact hoặc iOS NFCCore CocoaPods pod cho Flutter host.
 
-## Thứ tự phát hành
+## Chuẩn bị artifact
 
-```text
-nfc-core Android Maven/AAR + NFCCore iOS CocoaPods
-                            ↓
-       identity_nfc_platform_interface
-                            ↓
-       identity_nfc_android + identity_nfc_ios
-                            ↓
-                identity_nfc (public)
-```
-
-- Android implementation fallback về
-  `com.identity.nfc:nfc-core:<nfcCoreVersion>`; artifact đó phải publish trước.
-- iOS implementation phụ thuộc `NFCCore ~> 0.1`; bump minor/major core phải
-  cập nhật constraint podspec và test Pod resolution.
-- `NFCCore` hiện là CocoaPods source pod, chưa phải XCFramework binary mặc định.
-  Chỉ dùng `vendored_frameworks` sau một release project có artifact/signing/
-  slice/OpenSSL validation.
-
-Không publish `identity_nfc` khi dependency constraint không resolve được từ
-registry của consumer.
-
-## Release gates
-
-- [ ] Android `nfc-core` và iOS `NFCCore` immutable version đã publish, resolve
-      được từ consumer sạch.
-- [ ] Bốn Flutter package không có `path:` dependency trong `pubspec.yaml`.
-- [ ] `pubspec_overrides.yaml` chỉ phục vụ local monorepo, không che giấu version
-      dependency chưa publish.
-- [ ] `flutter analyze`, `flutter test` pass cho cả bốn package.
-- [ ] Flutter Android example build với Maven artifact production thật.
-- [ ] Flutter iOS example `pod install`, Xcode build và physical NFC test pass.
-- [ ] Android/iOS physical matrix pass: success, cancel, retry, invalid CAN,
-      tag lost, timeout, cache và `readImage: false`.
-- [ ] Không log raw `Uint8List` DG/image/CAN hoặc CCCD trong artifacts.
-- [ ] CHANGELOG mô tả API change và native core version.
-
-Physical parity và iOS Xcode/OpenSSL compatibility là production release
-blocker, không phải warning có thể bỏ qua.
-
-## Chuẩn bị version federation
-
-Khi bắt đầu stable release, nên release đồng bộ bốn package cùng version, ví dụ
-`1.0.0`:
-
-| Package | Version | Dependency cần cập nhật |
-| --- | --- | --- |
-| `identity_nfc_platform_interface` | `1.0.0` | Không có internal package dependency. |
-| `identity_nfc_android` | `1.0.0` | `identity_nfc_platform_interface: ^1.0.0` |
-| `identity_nfc_ios` | `1.0.0` | `identity_nfc_platform_interface: ^1.0.0` |
-| `identity_nfc` | `1.0.0` | Android, iOS và platform interface: `^1.0.0` |
-
-Sau stable release, implementation có thể patch/minor độc lập nếu public API và
-version constraints vẫn compatible. Breaking change trong model, MethodChannel
-payload hoặc native-core contract cần major bump cho package bị ảnh hưởng.
-
-Không publish `0.1.0-dev.1` lên production channel trừ khi chủ đích là
-prerelease và consumer pin chính xác version đó.
-
-## Kiểm tra từng package
-
-Chạy theo thứ tự federation:
+Trên macOS, cung cấp OpenSSL `1.1.2300` đã được kiểm tra và build một output
+native duy nhất, sau đó stage vào cả adapter npm/Flutter nếu cần:
 
 ```sh
-cd packages-flutter/identity_nfc_platform_interface
-flutter pub get
-flutter analyze
-flutter test
-flutter pub publish --dry-run
+export NITRO_NFC_HOST_OPENSSL_XCFRAMEWORK=/absolute/path/OpenSSL.xcframework
+yarn flutter:bundle-native
+yarn flutter:verify-native-bundles
 ```
 
-Lặp lại với `identity_nfc_android`, `identity_nfc_ios`, sau đó mới
-`identity_nfc`.
+Lệnh trên tạo các file gitignored:
 
-`flutter pub publish --dry-run` kiểm tra archive, README, LICENSE, CHANGELOG,
-version constraints và publish validation. Không thay `pubspec.yaml` thành path
-dependency trước release; `pubspec_overrides.yaml` local không tạo dependency
-contract cho consumer production.
+- `identity_nfc_android/android/libs/nfc-core.aar`
+- `identity_nfc_ios/ios/Frameworks/self-contained/NFCCore.xcframework`
+- `identity_nfc_ios/ios/Frameworks/host-openssl/NFCCore.xcframework`
+- `identity_nfc_ios/ios/Frameworks/host-openssl/NFCCoreResources.bundle`
+- `native-bundle.json` trong từng implementation package
 
-Kiểm tra thêm iOS implementation:
+Mỗi manifest khóa package/core version và SHA-256. Không tự copy binary vào
+Git hoặc sửa manifest bằng tay.
+
+## Release gate
+
+- Bốn `pubspec.yaml`, iOS podspec và native core đều là `1.0.0`; internal
+  constraints là `^1.0.0`.
+- `flutter analyze`, `flutter test`, native bundle verifier và `flutter pub
+  publish --dry-run` pass cho cả bốn package.
+- Pub archive Android/iOS chứa đầy đủ AAR/XCFramework/manifest dù assets bị
+  `.gitignore`; archive không chứa build output hoặc `pubspec_overrides.yaml`.
+- Consumer Android clean/minified build không có `:nfc-core`, NFC Maven repo,
+  `nfcCoreVersion` hoặc Android host workaround riêng.
+- iOS default chỉ embed self-contained NFCCore và không có external OpenSSL.
+  Manual mode dùng một provider OpenSSL `1.1.2300`, chỉ link static host-openssl
+  NFCCore và copy resource bundle.
+- Android/iPhone physical matrix pass: success, cancel, retry, invalid CAN,
+  tag lost, timeout, cache và `readImage: false`; chạy iOS cho cả default và
+  manual OpenSSL trước khi publish.
+
+## Phạm vi thay đổi và build native core
+
+Thay đổi chỉ ở federation adapter — Dart API, MethodChannel mapping hoặc
+platform wrapper — không cần build lại `nfc-core`. Có thể tái sử dụng output
+native đã kiểm tra; giữ nguyên native core version, sau đó chạy lại staging,
+manifest/checksum, Pub dry-run và consumer smoke test. Pipeline Flutter hiện
+đang yêu cầu bốn package version đồng bộ với native core version; vì vậy
+adapter-only release vẫn dùng lại binary cũ nhưng phải tuân thủ chính sách
+version đồng bộ hiện tại. Tách version adapter và core độc lập cần thay đổi
+bundle script/manifest contract trước.
+
+Workflow vẫn có thể build lại native core để kiểm tra tính tái lập. Đây là bước
+verification của CI, không phải yêu cầu kỹ thuật đối với adapter-only change.
+
+Để dùng lại output đã build và tránh build core trong local release, trỏ
+`NFC_NATIVE_ARTIFACTS_DIR` tới thư mục artifact đã được verify:
 
 ```sh
-cd packages-flutter/identity_nfc_ios/ios
-ruby -c identity_nfc_ios.podspec
+export NFC_NATIVE_ARTIFACTS_DIR=/absolute/path/nfc-native-artifacts
+yarn flutter:bundle-native
+yarn flutter:verify-native-bundles
 ```
 
-Kiểm tra Android production integration sau khi cấu hình Maven repository chứa
-`nfc-core` vừa publish:
+Phải build lại AAR và hai iOS `NFCCore.xcframework` variants khi thay đổi mã
+nguồn native core, ABI/symbol hoặc protocol, native dependencies, OpenSSL
+provider/linkage, deployment target, architecture slice hoặc resource của core.
+Khi đó cập nhật version native core, tạo lại `native-bundle.json` và SHA-256;
+các implementation package chứa bundle phải được test/release đồng bộ. Không
+copy binary mới hoặc sửa checksum thủ công trong Git.
 
-```sh
-cd packages-flutter/identity_nfc/example
-flutter build appbundle --release
-```
+## Private Pub publish
 
-## Publish lên pub registry
+Workflow `release-flutter.yml` chạy cho tag `flutter-v1.0.0`, dùng Flutter
+`3.27.4`, Java 17, `PUB_HOSTED_URL` và `PUB_TOKEN`. Workflow kiểm tra version
+đã immutable, chờ registry resolve sau từng package và publish theo đúng thứ tự
+interface → Android → iOS → facade.
 
-Đăng nhập registry mục tiêu (pub.dev hoặc private hosted pub server), sau đó
-publish theo đúng thứ tự:
-
-```sh
-cd packages-flutter/identity_nfc_platform_interface
-flutter pub publish
-
-cd ../identity_nfc_android
-flutter pub publish
-
-cd ../identity_nfc_ios
-flutter pub publish
-
-cd ../identity_nfc
-flutter pub publish
-```
-
-Không publish Android/iOS implementation trước platform interface version mà nó
-khai báo. Không publish public `identity_nfc` trước khi hai default package đã
-resolve được trên registry.
-
-Nếu dùng private hosted registry, cả bốn package phải resolve từ registry mà
-public package khai báo. Tránh publish một phần pub.dev và một phần private nếu
-dependency không resolve cross-registry.
-
-## Xác minh consumer sạch
-
-Tạo Flutter app mới ngoài monorepo. Không copy `pubspec_overrides.yaml`, local
-AAR/XCFramework hay source core.
-
-```sh
-flutter create nfc_release_smoke
-cd nfc_release_smoke
-flutter pub add identity_nfc:^<release-version>
-flutter pub get
-```
-
-Cấu hình Android Maven repository và iOS CocoaPods Specs source do SDK
-distributor cung cấp, rồi cấu hình NFC permission/entitlement theo
-[integration guide](INTEGRATION.md). Build release:
-
-```sh
-flutter build appbundle --release
-flutter build ipa --release
-```
-
-Trên Android/iPhone thật, xác nhận Flutter chỉ cài `identity_nfc`, native
-implementation auto-register, Android bottom sheet/iOS CoreNFC sheet mở đúng,
-progress chạy và `Uint8List` result không Base64 encode.
-
-### OpenSSL iOS
-
-Validate hai mode:
-
-- Default: `NFCCore` kéo `OpenSSL-Universal`.
-- Host-provided: set `USE_MANUAL_OPENSSL=1` trước `pod install`; host tự cung
-  cấp Swift module `OpenSSL` tương thích.
-
-Không bật manual mode khi host không có OpenSSL và không link binary OpenSSL thứ
-hai trong default mode.
-
-## Rollback
-
-pub registry không cho overwrite version đã publish. Khi có lỗi:
-
-1. Yêu cầu consumer pin về version an toàn hoặc đánh dấu version lỗi theo chính
-   sách registry.
-2. Publish native core patch trước nếu nguyên nhân nằm ở protocol/build.
-3. Publish federation theo interface → implementation → public.
-4. Không sửa ngầm implementation version mà không release public dependency
-   constraint tương thích.
-
-Xem [integration guide](INTEGRATION.md),
-[Flutter architecture](FLUTTER_PLUGIN.md) và
-[parity matrix](../architecture/PARITY_CHECKS.md).
+Chỉ tag/publish sau khi physical matrix đã được phê duyệt. Pub registry không
+cho overwrite version; khi có lỗi, publish patch version mới của package bị ảnh
+hưởng rồi cập nhật facade constraint tương thích.

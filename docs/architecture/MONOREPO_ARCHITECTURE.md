@@ -1,4 +1,4 @@
-# NFC SDK monorepo architecture
+# NFC Library monorepo architecture
 
 ## Purpose
 
@@ -21,12 +21,13 @@ owner of NFC protocol, cryptography, or passport parsing.
 │   ├── identity_nfc_android/             # Android Flutter adapter
 │   └── identity_nfc_ios/                 # iOS Flutter adapter
 ├── examples/
-│   └── react-native-example/             # Local RN consumer/harness
+│   ├── android-native-example/            # Native Android source/Maven smoke test
+│   └── react-native-example/              # Local RN consumer/harness
 ├── docs/
 │   ├── architecture/                     # Architecture, parity and dependency records
 │   ├── flutter/                          # Flutter adapter documentation
 │   └── react-native/                     # React Native adapter documentation
-├── vendor/                               # Upstream reference material, not compiled by SDK
+├── vendor/                               # Upstream reference material, not compiled by the library
 ├── package.json                          # Private Yarn workspace root
 └── turbo.json
 ```
@@ -82,29 +83,35 @@ adapter change can be tested together.
 
 | Consumer | Development dependency | Release dependency |
 |---|---|---|
-| RN Android adapter | Gradle project `:nfc-core` from `native/android/nfc-core` | `com.identity.nfc:nfc-core:<version>` |
-| RN iOS adapter | Local `NFCCore` Pod in the example Podfile | `NFCCore ~> <version>` from a pod repository |
+| RN Android adapter | Gradle project `:nfc-core` from `native/android/nfc-core` | Bundled `nfc-core.aar` inside the npm tarball |
+| RN iOS adapter | Local `NFCCore` Pod in the example Podfile | Bundled self-contained or host-openssl `NFCCore.xcframework` inside the npm tarball |
 | RN JavaScript | Yarn workspace `react-native-nitro-nfc` | npm package `react-native-nitro-nfc` |
-| Flutter Android adapter | Gradle project `:nfc-core` from `native/android/nfc-core` | `com.identity.nfc:nfc-core:<version>` |
-| Flutter iOS adapter | Local `NFCCore` Pod in the Flutter example Podfile | `NFCCore ~> <version>` from a pod repository |
+| Flutter Android adapter | Gradle project `:nfc-core` from `native/android/nfc-core` | Bundled `nfc-core.aar` inside `identity_nfc_android` Pub archive |
+| Flutter iOS adapter | Local `NFCCore` Pod in the Flutter example Podfile | Bundled self-contained or host-openssl `NFCCore.xcframework` inside `identity_nfc_ios` Pub archive |
 | Flutter Dart | `pubspec_overrides.yaml` path overrides inside `packages-flutter` | versioned pub packages |
 
-The Android adapter falls back to the Maven coordinate when a consuming app
-does not include the local Gradle project. This requires a published core
-artifact before external release.
+Both Android adapters fall back to a bundled `android/libs/nfc-core.aar` when a
+consumer does not include the local Gradle project. They mirror the core's
+pinned public dependencies because a local AAR has no POM metadata. The npm
+tarball and Flutter implementation Pub packages carry `native-bundle.json`
+with immutable core versions and checksums; external consumers do not configure
+an NFC Maven repository.
 
 ## OpenSSL ownership
 
-`NitroNfc.podspec` depends only on `NFCCore`. OpenSSL is owned by
-`NFCCore.podspec`:
+`NitroNfc.podspec` selects a bundled NFCCore XCFramework:
 
-- Default: NFCCore depends on `OpenSSL-Universal`.
-- Host-provided Flutter: set `USE_MANUAL_OPENSSL=1`; the host Podfile must
-  provide one compatible `OpenSSL` module. React Native continues to support
-  its legacy `NITRO_NFC_USE_MANUAL_OPENSSL=1` alias.
+- Default: dynamic self-contained NFCCore includes private OpenSSL.
+- React Native host-provided: set `NITRO_NFC_USE_MANUAL_OPENSSL=1`; the host
+  Podfile must provide one compatible `OpenSSL` module and the static
+  host-openssl XCFramework resource bundle is copied into the app.
+- Flutter default: dynamic self-contained NFCCore includes private OpenSSL.
+- Flutter host-provided: set `IDENTITY_NFC_USE_MANUAL_OPENSSL=1`; the host
+  provides one compatible `OpenSSL` module and the static host-openssl resource
+  bundle is copied into the app.
 
-Do not link both a host OpenSSL binary and a second incompatible
-`OpenSSL-Universal` binary.
+Never link a self-contained NFCCore and a host OpenSSL provider in the same
+target; manual mode selects the alternative static framework for both adapters.
 
 ## Commands
 
@@ -129,10 +136,14 @@ Android and iPhone devices.
 
 ## Release order
 
-1. Validate and publish Android `nfc-core` AAR/Maven artifact.
-2. Validate and publish iOS `NFCCore` Pod/SPM artifact.
-3. Release the React Native npm adapter with compatible native-core versions.
-4. Release the Flutter adapter only after it passes the same core parity matrix.
+1. Validate Android `nfc-core` and create its release AAR with
+   `publishNfcCoreLocal -PnfcCoreVersion=<SemVer>`.
+2. Validate iOS `NFCCore` and build self-contained plus host-openssl
+   XCFramework variants against the pinned provider.
+3. Stage both cores from the same native output into React Native and Flutter,
+   verify each `native-bundle.json`, then release their package archives.
+4. Release the Flutter federation only after it passes the same core parity
+   matrix in default and host-OpenSSL iOS modes.
 
 See [MIGRATION.md](MIGRATION.md) and [PARITY_CHECKS.md](PARITY_CHECKS.md) for
 the outstanding device and consumer verification gates.

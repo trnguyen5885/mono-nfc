@@ -12,7 +12,7 @@
 4. Chứng minh parity trên Android/iOS thật.
 5. Sau khi checkpoint đạt mới chuyển sang monorepo và publish artifact.
 
-Đây không phải production migration. Mục tiêu là tách SDK/core, tạo consumer samples và chuẩn bị artifact để tích hợp sau này. Không có production app nào bị thay thế trong plan này.
+Đây không phải production migration. Mục tiêu là tách library/core, tạo consumer samples và chuẩn bị artifact để tích hợp sau này. Không có production app nào bị thay thế trong plan này.
 
 ### Scope inventory
 
@@ -82,9 +82,9 @@ ChipReader hiện xử lý protocol và parsing, nhưng host flow còn liên k�
 Dependency phải giữ hoặc thay thế có bằng chứng:
 
 - Android NFC/IsoDep;
-- JMRTD 0.7.18;
-- Scuba;
-- Bouncy Castle 1.64;
+- JMRTD 0.8.6;
+- Scuba (`scuba-sc-android` 0.0.26);
+- Bouncy Castle `jdk18on` 1.84 (`bcprov` / `bcpkix` / `bcutil`);
 - AndroidX AppCompat;
 - minSdk/compileSdk hiện tại của package.
 
@@ -230,7 +230,7 @@ yarn turbo run build:ios
 
 Baseline phải ghi lại:
 
-- Node/Yarn, Xcode, JDK, Android SDK/NDK, CocoaPods;
+- Node/Yarn, Xcode, JDK, Android platform tools/NDK, CocoaPods;
 - package versions và generated Nitrogen state;
 - build time, warnings, failure logs;
 - test card, thiết bị, OS và kết quả scan;
@@ -385,13 +385,13 @@ Mỗi consumer phải build từ clean checkout và không dựa vào source pat
 
 ### 8.2 Flutter reference consumer
 
-Flutter đã được đưa vào scope SDK bằng federated plugin trong `packages-flutter/`.
+Flutter đã được đưa vào scope library bằng federated plugin trong `packages-flutter/`.
 Trước khi release, vẫn phải hoàn tất các gate sau:
 
 1. Giữ dmrtd hiện tại như reference implementation; không thay thế hoặc cutover app.
 2. Expose DG15/AA và các field mà reference consumer đang dùng sau khi cả hai native core có contract tương ứng.
 3. Chạy comparison giữa dmrtd và plugin mới trên cùng card/device matrix.
-4. Chỉ kết luận SDK tương thích khi result, image, raw bytes và error behavior tương đương.
+4. Chỉ kết luận library tương thích khi result, image, raw bytes và error behavior tương đương.
 
 Pigeon chỉ là transport layer của Flutter plugin; không dùng Pigeon model làm core model.
 
@@ -529,11 +529,16 @@ Local development có thể dùng:
 if (findProject(':nfc-core') != null) {
   implementation project(':nfc-core')
 } else {
-  implementation "com.yourorg:nfc-core:<nfcCoreVersion>"
+  implementation "com.vppos.nfc:nfc-core:<nfcCoreVersion>"
 }
 ~~~
 
-External consumer phải có Maven repository chứa artifact trước khi SDK package được release. CI phải build một consumer bên ngoài monorepo để kiểm tra nhánh artifact.
+External consumer phải có Maven repository chứa artifact trước khi library package được release. CI phải build một consumer bên ngoài monorepo để kiểm tra nhánh artifact.
+
+Coordinate Android chuẩn hóa là `com.vppos.nfc:nfc-core:<SemVer>`. Local Maven
+được tạo bởi `publishNfcCoreLocal -PnfcCoreVersion=<SemVer>` trong
+`native/android/nfc-core/build/local-maven`; không phát hành file AAR đơn lẻ vì
+consumer cần POM và Gradle module metadata để resolve transitive dependencies.
 
 ---
 
@@ -555,7 +560,7 @@ External consumer phải có Maven repository chứa artifact trước khi SDK p
 - test SPM consumer độc lập;
 - kiểm tra OpenSSL và simulator/device architectures.
 
-### SDK package và RN npm
+### Library package và RN npm
 
 Thứ tự release:
 
@@ -617,7 +622,7 @@ Không kéo dài checkpoint chỉ vì kết quả không thuận lợi.
 
 ---
 
-## 13. Baseline và chi phí duy trì SDK
+## 13. Baseline và chi phí duy trì Library
 
 Vì chưa có production migration, không tính production ROI hoặc payback trong plan này. Owner chỉ cần đo:
 
@@ -625,17 +630,17 @@ Vì chưa có production migration, không tính production ROI hoặc payback t
 - thời gian từ source change tới artifact verified;
 - số lần duplicate protocol/parser implementation;
 - parity defect, rework và failed consumer builds;
-- thời gian cập nhật Android/iOS SDK, Gradle, Xcode và OpenSSL;
+- thời gian cập nhật Android/iOS platform toolchains, Gradle, Xcode và OpenSSL;
 - chi phí duy trì RN adapter, Flutter adapter và native consumers;
 - thời gian manual test trên thiết bị thật.
 
-Không đưa production rollout, OTA, store release hoặc capacity saving vào acceptance criterion. Sau khi SDK được dùng thực tế, có thể mở một phase economics riêng.
+Không đưa production rollout, OTA, store release hoặc capacity saving vào acceptance criterion. Sau khi library được dùng thực tế, có thể mở một phase economics riêng.
 
 ---
 
 ## 14. Checklist thực thi
 
-- [ ] Xác nhận target consumer scope và measurable SDK driver
+- [ ] Xác nhận target consumer scope và measurable library driver
 - [ ] Xác nhận owner, deadline và checkpoint budget
 - [ ] Chạy baseline clean trên RN package/example
 - [ ] Thu thập Flutter parity evidence nếu mobile-app được chọn làm reference consumer
@@ -651,5 +656,5 @@ Không đưa production rollout, OTA, store release hoặc capacity saving vào 
 - [ ] Di chuyển package vào packages/ bằng git mv
 - [ ] Thêm workspace:* dependency cho example
 - [ ] Build clean monorepo từ checkout mới
-- [ ] Publish core artifacts trước SDK/RN npm package
+- [ ] Publish core artifacts trước library/RN npm package
 - [ ] Ghi decision record và terminal decision

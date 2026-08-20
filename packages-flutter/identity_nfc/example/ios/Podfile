@@ -26,13 +26,31 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 
 flutter_ios_podfile_setup
 
+def identity_nfc_manual_openssl?
+  [
+    ENV['IDENTITY_NFC_USE_MANUAL_OPENSSL'],
+    ENV['USE_MANUAL_OPENSSL'],
+    ENV['NITRO_NFC_USE_MANUAL_OPENSSL'],
+    ENV['NFCSDK_USE_MANUAL_OPENSSL'],
+  ].any? { |value| value.to_s.strip.downcase == '1' }
+end
+
+# Keep source-mode NFCCore aligned with the Flutter-specific manual selector.
+ENV['NFCSDK_USE_MANUAL_OPENSSL'] = '1' if identity_nfc_manual_openssl?
+
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
-  # Development-only local core. Release consumers resolve the versioned
-  # NFCCore dependency declared by identity_nfc_ios.podspec.
-  pod 'NFCCore', :path => '../../../../native/ios/NFCCore'
+  # The monorepo example defaults to source mode. Set this to 0 to exercise
+  # exactly the bundled artifacts that a Pub consumer receives.
+  use_source_core = ENV.fetch('IDENTITY_NFC_USE_SOURCE_CORE', '1') != '0'
+  ENV['IDENTITY_NFC_USE_SOURCE_CORE'] = '1' if use_source_core
+  pod 'NFCCore', :path => '../../../../native/ios/NFCCore' if use_source_core
+
+  # The example declares this only as its host-owned provider for manual mode.
+  # Production hosts select and own their compatible OpenSSL provider.
+  pod 'OpenSSL-Universal', '1.1.2300' if identity_nfc_manual_openssl?
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
     inherit! :search_paths

@@ -1,8 +1,9 @@
 scope	dependency	version/policy	purpose	owner/action
-android-core	org.jmrtd:jmrtd	0.7.18	PACE and ICAO LDS protocol	Keep parity-tested version
-android-core	net.sf.scuba:scuba-sc-android	0.0.20	Smart-card transport used by JMRTD	Keep with JMRTD
-android-core	bcprov-jdk15on	strictly 1.64	Cryptography provider	Validate against Android/Xcode release matrix
-android-core	bcpkix-jdk15on	strictly 1.64	X.509 and PACE support	Validate with bcprov
+android-core	org.jmrtd:jmrtd	0.8.6	PACE and ICAO LDS protocol	Keep parity-tested version
+android-core	net.sf.scuba:scuba-sc-android	0.0.26	Smart-card transport used by JMRTD	Keep with JMRTD
+android-core	bcprov-jdk18on	strictly 1.84	Cryptography provider	Validate against Android release matrix
+android-core	bcpkix-jdk18on	strictly 1.84	X.509 and PACE support	Validate with bcprov
+android-core	bcutil-jdk18on	strictly 1.84	BC util used by JMRTD 0.8.x	Keep aligned with bcprov
 android-adapter	androidx.appcompat:appcompat	1.7.0	RN-hosted Android NFC screen	Adapter-only dependency
 android-adapter	react-android	React Native supplied	React Native integration	Adapter-only dependency
 android-adapter	react-native-nitro-modules	^0.36.1	Nitro bridge	Adapter-only dependency

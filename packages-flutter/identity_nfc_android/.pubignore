@@ -1,0 +1,14 @@
+.git/
+.gitignore
+.pubignore
+.dart_tool/
+build/
+pubspec.lock
+pubspec_overrides.yaml
+android/.gradle/
+android/build/
+
+# Generated release assets are ignored by Git but must be in the Pub archive.
+!android/libs/
+!android/libs/nfc-core.aar
+!native-bundle.json

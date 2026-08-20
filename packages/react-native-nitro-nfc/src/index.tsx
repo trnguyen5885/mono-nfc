@@ -16,6 +16,7 @@ import type {
   NFCErrorEvent,
   NFCLanguage,
   NFCProgressEvent,
+  NFCProgressPhase,
   NFCScanCachePolicy,
   NFCScanResult,
   NFCSubscription,
@@ -98,10 +99,13 @@ function createSubscription<T>(
 
 function normalizeProgress(event: NativeProgressPayload): NFCProgressEvent {
   if (event.hasError) {
+    const code = event.errorCode || 'Unknown';
     return {
       error: {
-        code: event.errorCode || 'Unknown',
+        code,
         message: event.errorMessage || event.message || 'NFC read failed',
+        recoverable: isRecoverableError(code),
+        suggestedAction: suggestedActionForError(code),
       },
     };
   }
@@ -109,7 +113,45 @@ function normalizeProgress(event: NativeProgressPayload): NFCProgressEvent {
   return {
     progress: Math.round(Number(event.progress ?? 0)),
     message: String(event.message ?? ''),
+    phase: phaseForProgress(event.progress, event.message),
   };
+}
+
+function phaseForProgress(progress: number, message: string): NFCProgressPhase {
+  const normalizedProgress = Math.round(Number(progress ?? 0));
+  const normalizedMessage = String(message ?? '').toLowerCase();
+
+  if (normalizedProgress >= 100) return 'success';
+  if (normalizedProgress >= 95) return 'reading';
+  if (normalizedProgress >= 40) return 'reading';
+  if (normalizedProgress >= 20) return 'authenticating';
+  if (normalizedProgress >= 10) return 'connecting';
+  if (
+    normalizedMessage.includes('opening') ||
+    normalizedMessage.includes('mở màn hình')
+  ) {
+    return 'opening';
+  }
+  return 'waiting-for-tag';
+}
+
+function isRecoverableError(code: string): boolean {
+  return new Set([
+    'NFCDisabled',
+    'InvalidMRZKey',
+    'PACEError',
+    'NoConnectedTag',
+    'ConnectionError',
+    'SessionTimeout',
+  ]).has(code);
+}
+
+function suggestedActionForError(
+  code: string
+): NFCErrorEvent['suggestedAction'] {
+  if (code === 'NFCDisabled') return 'open-nfc-settings';
+  if (isRecoverableError(code)) return 'retry';
+  return 'close';
 }
 
 function normalizeResult(result: NativeScanResult): NFCScanResult {
@@ -146,9 +188,12 @@ function normalizeError(caughtError: unknown): NFCErrorEvent {
   }
 
   if (caughtError instanceof Error) {
+    const nativeError = /^([A-Za-z][A-Za-z0-9]*):\s+(.+)$/.exec(
+      caughtError.message
+    );
     return {
-      code: 'Unknown',
-      message: caughtError.message,
+      code: nativeError?.[1] || 'Unknown',
+      message: nativeError?.[2] || caughtError.message,
     };
   }
 
@@ -167,6 +212,7 @@ export type {
   NFCDataGroupName,
   NFCErrorEvent,
   NFCProgressEvent,
+  NFCProgressPhase,
   NFCScanCachePolicy,
   NFCLanguage,
   NFCScanResult,
@@ -228,12 +274,22 @@ export const NFCSDK = {
       return;
     }
 
-    const scanPromise = NFCSDK.scan(options);
+    let receivedNativeError = false;
+    const scanPromise = NFCSDK.scan({
+      ...options,
+      onProgress: (event) => {
+        if ('error' in event) {
+          receivedNativeError = true;
+        }
+      },
+    });
     currentScan = scanPromise;
 
     scanPromise
       .catch((caughtError) => {
-        notifyProgress({ error: normalizeError(caughtError) });
+        if (!receivedNativeError) {
+          notifyProgress({ error: normalizeError(caughtError) });
+        }
       })
       .finally(() => {
         if (currentScan === scanPromise) {

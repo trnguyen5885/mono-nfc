@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   Image,
   Pressable,
@@ -8,58 +8,80 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
+} from "react-native";
 import {
   NFCSDK,
   NFCSDKError,
   type NFCProgressEvent,
   type NFCScanResult,
-} from 'react-native-nitro-nfc';
+} from "react-native-nitro-nfc";
 
 export default function App() {
-  const [citizenId, setCitizenId] = useState('');
+  const [citizenId, setCitizenId] = useState("");
   const [result, setResult] = useState<NFCScanResult | null>(null);
-  const [, setProgress] = useState<NFCProgressEvent>({
+  const [progress, setProgress] = useState<NFCProgressEvent>({
     progress: 0,
-    message: 'Enter a citizen ID and press the button to start NFC',
+    message: "Enter a citizen ID and press the button to start NFC",
+    phase: "waiting-for-tag",
   });
+  const [isScanning, setIsScanning] = useState(false);
+
   const handleStart = async () => {
+    if (isScanning) return;
+
+    setIsScanning(true);
     setResult(null);
     setProgress({
       progress: 0,
-      message: 'Opening the native NFC screen...',
+      message: "Opening the native NFC screen...",
+      phase: "opening",
     });
 
     try {
       const data = await NFCSDK.scan({
         citizenId,
         readImage: true,
-        cachePolicy: 'reuse-if-valid',
-        language: 'vi',
+        cachePolicy: "reuse-if-valid",
+        language: "vi",
         onProgress: (event) => {
-          console.log('[NitroNfc] Progress:', event);
           setProgress(event);
         },
       });
 
-      console.log('[NitroNfc] Result:', data);
       setResult(data);
       setProgress({
         progress: 100,
-        message: 'Received NFC metadata from the native module',
+        message: "Received NFC metadata from the native module",
+        phase: "success",
       });
     } catch (caughtError) {
-      const message =
-        caughtError instanceof NFCSDKError
-          ? caughtError.message
-          : 'Unable to start Nitro NFC.';
-
       setProgress({
-        progress: -1,
-        message,
+        error: {
+          code:
+            caughtError instanceof NFCSDKError ? caughtError.code : "Unknown",
+          message:
+            caughtError instanceof NFCSDKError
+              ? caughtError.message
+              : "Unable to start Nitro NFC.",
+        },
       });
+    } finally {
+      setIsScanning(false);
     }
   };
+
+  const isProgressError = "error" in progress;
+  const progressValue = isProgressError ? 0 : progress.progress;
+  const progressMessage = isProgressError
+    ? progress.error.message
+    : progress.message;
+  const progressPhase = isProgressError
+    ? progress.error.suggestedAction === "open-nfc-settings"
+      ? "NFC settings required"
+      : progress.error.recoverable
+        ? "Retry available"
+        : "Scan stopped"
+    : progress.phase?.replace(/-/g, " ") || "waiting for tag";
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -79,9 +101,29 @@ export default function App() {
             style={styles.input}
           />
 
-          <Pressable style={styles.button} onPress={handleStart}>
-            <Text style={styles.buttonText}>Start NFC</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ busy: isScanning, disabled: isScanning }}
+            disabled={isScanning}
+            style={styles.button}
+            onPress={handleStart}
+          >
+            <Text style={styles.buttonText}>
+              {isScanning ? "NFC scan in progress…" : "Start NFC"}
+            </Text>
           </Pressable>
+        </View>
+
+        <View style={styles.card} accessible accessibilityLiveRegion="polite">
+          <Text style={styles.cardTitle}>NFC status</Text>
+          <Text style={styles.statusText}>{progressPhase}</Text>
+          <Text style={styles.messageText}>{progressMessage}</Text>
+          <View style={styles.progressTrack}>
+            <View
+              style={[styles.progressFill, { width: `${progressValue}%` }]}
+            />
+          </View>
+          <Text style={styles.debugText}>{progressValue}%</Text>
         </View>
 
         {result && (
@@ -99,19 +141,19 @@ export default function App() {
             ) : null}
 
             {[
-              { label: 'Citizen ID', value: result.citizenId },
-              { label: 'Full name', value: result.fullName },
-              { label: 'Date of birth', value: result.dob },
-              { label: 'Gender', value: result.gender },
-              { label: 'Nationality', value: result.nationality },
-              { label: 'Address', value: result.permanentAddress },
-              { label: 'Issue date', value: result.issueDate },
-              { label: 'Expiration date', value: result.expireDate },
+              { label: "Citizen ID", value: result.citizenId },
+              { label: "Full name", value: result.fullName },
+              { label: "Date of birth", value: result.dob },
+              { label: "Gender", value: result.gender },
+              { label: "Nationality", value: result.nationality },
+              { label: "Address", value: result.permanentAddress },
+              { label: "Issue date", value: result.issueDate },
+              { label: "Expiration date", value: result.expireDate },
             ].map((item) => (
               <View key={item.label} style={styles.resultRow}>
                 <Text style={styles.resultKey}>{item.label}</Text>
                 <Text style={styles.resultValue} selectable>
-                  {item.value || '(empty)'}
+                  {item.value || "(empty)"}
                 </Text>
               </View>
             ))}
@@ -121,23 +163,23 @@ export default function App() {
         {result && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Chip data (lazy)</Text>
-            <ScrollView style={styles.resultBox}>
+            <View>
               {[
-                { label: 'IMAGE', value: result.imageFromChipSize },
-                { label: 'DG1', value: result.dg1Size },
-                { label: 'DG2', value: result.dg2Size },
-                { label: 'DG13', value: result.dg13Size },
-                { label: 'DG14', value: result.dg14Size },
-                { label: 'SOD', value: result.sodSize },
+                { label: "IMAGE", value: result.imageFromChipSize },
+                { label: "DG1", value: result.dg1Size },
+                { label: "DG2", value: result.dg2Size },
+                { label: "DG13", value: result.dg13Size },
+                { label: "DG14", value: result.dg14Size },
+                { label: "SOD", value: result.sodSize },
               ].map((item) => (
                 <View key={item.label} style={styles.resultRow}>
                   <Text style={styles.resultKey}>{item.label}</Text>
                   <Text style={styles.resultValue} selectable>
-                    {item.value > 0 ? `${item.value} bytes` : '(empty)'}
+                    {item.value > 0 ? `${item.value} bytes` : "(empty)"}
                   </Text>
                 </View>
               ))}
-            </ScrollView>
+            </View>
           </View>
         )}
 
@@ -157,7 +199,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F5FA',
+    backgroundColor: "#F5F5FA",
   },
   container: {
     paddingHorizontal: 20,
@@ -166,45 +208,45 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 2,
-    textTransform: 'uppercase',
-    color: '#5E5CE6',
+    textTransform: "uppercase",
+    color: "#5E5CE6",
     marginBottom: 6,
   },
   titleBadge: {
-    alignSelf: 'center',
-    backgroundColor: '#EEEDFE',
+    alignSelf: "center",
+    backgroundColor: "#EEEDFE",
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 10,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#D6D4F8',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: "#D6D4F8",
+    justifyContent: "center",
+    alignItems: "center",
   },
   title: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#4A48C9',
-    fontFamily: 'Courier',
+    fontWeight: "700",
+    color: "#4A48C9",
+    fontFamily: "Courier",
     letterSpacing: -0.3,
   },
   description: {
     fontSize: 15,
     lineHeight: 22,
-    color: '#8C8CA1',
+    color: "#8C8CA1",
     marginBottom: 28,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#ECECF0',
-    shadowColor: '#5E5CE6',
+    borderColor: "#ECECF0",
+    shadowColor: "#5E5CE6",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 12,
@@ -212,8 +254,8 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#1C1C2E',
+    fontWeight: "700",
+    color: "#1C1C2E",
     marginBottom: 14,
     letterSpacing: 0.2,
   },
@@ -221,82 +263,91 @@ const styles = StyleSheet.create({
     width: 110,
     height: 140,
     borderRadius: 14,
-    alignSelf: 'center',
+    alignSelf: "center",
     marginBottom: 20,
-    backgroundColor: '#F0F0F6',
+    backgroundColor: "#F0F0F6",
     borderWidth: 2,
-    borderColor: '#E0DFF8',
+    borderColor: "#E0DFF8",
   },
   input: {
     borderWidth: 1,
-    borderColor: '#DDDDE6',
+    borderColor: "#DDDDE6",
     borderRadius: 14,
-    backgroundColor: '#FAFAFC',
+    backgroundColor: "#FAFAFC",
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#1C1C2E',
+    color: "#1C1C2E",
     marginBottom: 14,
   },
   button: {
-    backgroundColor: '#5E5CE6',
+    backgroundColor: "#5E5CE6",
     borderRadius: 14,
     paddingVertical: 16,
-    alignItems: 'center',
-    shadowColor: '#5E5CE6',
+    alignItems: "center",
+    shadowColor: "#5E5CE6",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 5,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 0.3,
   },
   statusText: {
     fontSize: 14,
-    color: '#6E6E82',
+    color: "#6E6E82",
     marginBottom: 6,
   },
   messageText: {
     fontSize: 15,
-    color: '#1C1C2E',
+    color: "#1C1C2E",
     marginBottom: 12,
+  },
+  progressTrack: {
+    height: 8,
+    overflow: "hidden",
+    borderRadius: 999,
+    backgroundColor: "#F0F0F6",
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: "#5E5CE6",
   },
   debugText: {
     fontSize: 13,
-    color: '#8C8CA1',
-  },
-  resultBox: {
-    maxHeight: 500,
+    color: "#8C8CA1",
   },
   resultRow: {
     marginBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ECECF0',
+    borderBottomColor: "#ECECF0",
     paddingBottom: 10,
     paddingLeft: 10,
     borderLeftWidth: 2,
-    borderLeftColor: '#5E5CE6',
+    borderLeftColor: "#5E5CE6",
   },
   resultKey: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#5E5CE6',
+    fontWeight: "700",
+    color: "#5E5CE6",
     marginBottom: 3,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 1,
   },
   resultValue: {
     fontSize: 15,
-    color: '#1C1C2E',
+    color: "#1C1C2E",
     lineHeight: 21,
   },
   resultText: {
     fontSize: 15,
     lineHeight: 21,
-    color: '#8C8CA1',
+    color: "#8C8CA1",
   },
 });

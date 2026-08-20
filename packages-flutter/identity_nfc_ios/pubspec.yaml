@@ -1,6 +1,6 @@
 name: identity_nfc_ios
 description: iOS implementation for the identity_nfc Flutter plugin.
-version: 0.1.0-dev.1
+version: 1.0.0
 homepage: https://github.com/trnguyen5885/react-native-nitro-nfc
 
 environment:
@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   identity_nfc_platform_interface:
-    ^0.1.0-dev.1
+    ^1.0.0
 
 dev_dependencies:
   flutter_test:

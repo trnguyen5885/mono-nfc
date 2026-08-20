@@ -23,5 +23,7 @@ plugins {
 }
 
 include ":app"
-include ":nfc-core"
-project(":nfc-core").projectDir = new File(settingsDir, "../../../../native/android/nfc-core")
+if (System.getenv('IDENTITY_NFC_USE_SOURCE_CORE') != '0') {
+    include ":nfc-core"
+    project(":nfc-core").projectDir = new File(settingsDir, "../../../../native/android/nfc-core")
+}

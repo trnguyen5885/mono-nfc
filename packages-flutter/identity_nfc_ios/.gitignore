@@ -31,3 +31,7 @@ migrate_working_dir/
 .flutter-plugins
 .flutter-plugins-dependencies
 build/
+
+# Generated only while preparing a Pub release.
+/ios/Frameworks/
+/native-bundle.json

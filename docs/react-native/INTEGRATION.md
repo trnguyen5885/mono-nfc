@@ -2,7 +2,9 @@
 
 Hướng dẫn này dành cho ứng dụng React Native tiêu thụ package đã phát hành
 `react-native-nitro-nfc`. Package mở native NFC UI, còn Android/iOS core đọc
-chip, PACE, parse dữ liệu và quản lý cache ngắn hạn.
+chip, PACE, parse dữ liệu và quản lý cache ngắn hạn. Bản npm production mang
+sẵn Android AAR và hai biến thể iOS XCFramework; host không cần Maven hoặc
+CocoaPods Specs repository riêng cho NFC core.
 
 ## 1. Điều kiện trước khi tích hợp
 
@@ -11,9 +13,6 @@ chip, PACE, parse dữ liệu và quản lý cache ngắn hạn.
 - Android: thiết bị thật có NFC, Android API 24 trở lên và NFC đang bật.
 - iOS: thiết bị thật iOS 15 trở lên, Apple Developer team được cấp quyền NFC
   Tag Reading.
-- Artifact `nfc-core` (Maven/AAR) và `NFCCore` CocoaPods pod (hiện là source
-  pod) phải đã được SDK distributor publish ở repository mà ứng dụng host có
-  thể truy cập.
 
 Emulator Android và iOS Simulator không thể thay thế kiểm thử chip NFC thật.
 
@@ -54,13 +53,15 @@ android {
 }
 ```
 
-Khi dùng artifact production, Gradle phải biết Maven repository chứa
-`com.identity.nfc:nfc-core`. URL và credentials do SDK distributor cung cấp;
-không thêm local Gradle project `:nfc-core` vào app production.
+Adapter liên kết `nfc-core.aar` đã nằm trong npm package. Host không thêm local
+Gradle project `:nfc-core`, Maven URL hoặc credential NFC SDK. Các dependency
+công khai của Android core vẫn resolve qua `google()` và `mavenCentral()` (hoặc
+internal mirror tương đương) như cấu hình Gradle tiêu chuẩn của host.
 
 Trước khi gọi scan, người dùng cần bật NFC. `NFCSDK.isAvailable()` trả `false`
 khi không có adapter hoặc native module không khả dụng. Khi adapter có nhưng
-NFC tắt, scan trả lỗi `NFCDisabled`.
+NFC tắt, Android bottom sheet báo event `NFCDisabled`, cho phép mở Settings và
+giữ Promise pending để tiếp tục cùng phiên scan.
 
 ## 4. Cấu hình iOS
 
@@ -93,18 +94,19 @@ pod install
 
 ### OpenSSL
 
-Mặc định `NFCCore` tự kéo `OpenSSL-Universal`. Đây là mode nên dùng cho app
-mới. Không thêm OpenSSL binary thứ hai vào host.
+Mặc định adapter liên kết XCFramework `self-contained`; framework này giữ
+OpenSSL private, nên host không thêm OpenSSL binary thứ hai.
 
-Chỉ khi host đã quản lý một OpenSSL tương thích, dùng manual mode trước lúc
-`pod install`:
+Nếu host đã quản lý một OpenSSL tương thích, chọn XCFramework static
+`host-openssl` trước lúc `pod install`:
 
 ```sh
 NITRO_NFC_USE_MANUAL_OPENSSL=1 pod install
 ```
 
-Trong mode này host phải tự khai báo provider của mình trong Podfile và provider
-đó phải expose Swift module tên `OpenSSL`. `NFCSDK_USE_MANUAL_OPENSSL=1` vẫn là
+Trong mode này host phải tự khai báo **một** provider tương thích trong Podfile;
+provider phải expose Swift module tên `OpenSSL`. Provider dynamic dùng Embed &
+Sign, provider static dùng Do Not Embed. `NFCSDK_USE_MANUAL_OPENSSL=1` vẫn là
 alias tương thích cũ. Không bật manual mode nếu host chưa cung cấp OpenSSL.
 
 ## 5. Luồng scan khuyến nghị
@@ -138,7 +140,7 @@ export async function scanCitizenCard(citizenId: string) {
     });
   } catch (error) {
     if (error instanceof NFCSDKError) {
-      // Ví dụ: InvalidCitizenId, NFCDisabled, PACEError, UserCanceled.
+      // Ví dụ: InvalidCitizenId hoặc UserCanceled.
       throw error;
     }
     throw error;
@@ -179,15 +181,20 @@ Tên data group được hỗ trợ: `IMAGE`, `DG1`, `DG2`, `DG13`, `DG14`, `SOD
 | Code | Cách xử lý UX khuyến nghị |
 | --- | --- |
 | `NFCNotSupported` | Thông báo thiết bị không hỗ trợ NFC. |
-| `NFCDisabled` | Hướng dẫn bật NFC rồi retry. |
+| `NFCDisabled` | Bottom sheet giữ phiên scan, hiển thị nút mở NFC Settings và tự quay lại chờ thẻ khi NFC đã bật. |
 | `InvalidCitizenId` | Yêu cầu nhập lại số định danh. |
 | `UserCanceled` | Đóng flow nhẹ nhàng, không coi là lỗi hệ thống. |
 | `InvalidMRZKey`, `PACEError` | Kiểm tra đúng CAN/CCCD và thử lại. |
 | `ConnectionError`, `SessionTimeout` | Giữ thẻ ổn định, tháo ốp dày và thử lại. |
 | `ScanInProgress` | Disable nút bắt đầu scan cho đến khi Promise hoàn tất. |
 
-Một error progress event có thể được gửi trước khi Promise reject. Chỉ xử lý
-một nguồn event cho mỗi UI state để không hiện lỗi hai lần.
+`NFCDisabled`, `InvalidMRZKey`, `PACEError`, `NoConnectedTag`,
+`ConnectionError` và `SessionTimeout` là error có thể phục hồi trên Android:
+bottom sheet vẫn mở để người dùng vào Settings hoặc thử lại, nên Promise vẫn
+pending. Event có thêm `error.recoverable` và `error.suggestedAction` để app
+host phản chiếu trạng thái nếu cần. `UserCanceled` và lỗi terminal sẽ reject
+Promise một lần. Chỉ xử lý một nguồn event cho mỗi UI state để không hiện lỗi
+hai lần.
 
 ## 8. Checklist trước production
 
@@ -195,8 +202,8 @@ một nguồn event cho mỗi UI state để không hiện lỗi hai lần.
 - [ ] Không log hoặc lưu DG bytes, ảnh chip, CAN/CCCD ngoài nhu cầu nghiệp vụ.
 - [ ] Gọi `clearCachedScan()` sau khi flow hoàn tất.
 - [ ] Xác nhận entitlement iOS có trong provisioning profile release.
-- [ ] Xác nhận repository Maven/Pods và version native core được pin theo
-      release của `react-native-nitro-nfc`.
+- [ ] Xác nhận `native-bundle.json` của package khớp release và không có Maven/
+      CocoaPods source dependency NFC SDK ngoài package.
 - [ ] Kiểm thử success, cancel, NFC disabled, tag lost, retry và `readImage: false`.
 
 Xem thêm [architecture và parity matrix](../architecture/PARITY_CHECKS.md).

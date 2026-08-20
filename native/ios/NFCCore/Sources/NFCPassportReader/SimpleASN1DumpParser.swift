@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import OpenSSL
+internal import OpenSSL
 
 @available(iOS 13, macOS 10.15, *)
 public class ASN1Item : CustomDebugStringConvertible {

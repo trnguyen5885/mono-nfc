@@ -8,4 +8,5 @@ DG14	80	Optional security group reading	core
 SOD	90	Optional SOD reading	core
 DG2/cache	95	Image read or matching cached portrait used	core
 complete	100	All requested core work is complete	core
-error	-1 in Nitro payload	Stable error code and localized display message	adapter maps core error
+recoverable error	-1 in Nitro payload	Native sheet stays open and exposes retry or NFC Settings action	Android adapter maps core error
+terminal error	-1 in Nitro payload	Native sheet closes after showing the localized error; scan Promise rejects once	Android adapter maps core error

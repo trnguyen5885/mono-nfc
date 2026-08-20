@@ -1,2 +1,9 @@
-# nfc-core exposes Kotlin data models and keeps protocol implementation details internal.
-# Consumer applications should keep their own R8 policy for NFC UI and React Native.
+# JMRTD (BAC / PACE / Secure Messaging / LDS)
+-keep class org.jmrtd.** { *; }
+
+# Scuba Smartcard (IsoDepCardService được load bằng reflection)
+-keep class net.sf.scuba.** { *; }
+
+# BouncyCastle Cryptography
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.bouncycastle.**

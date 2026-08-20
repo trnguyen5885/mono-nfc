@@ -5,7 +5,7 @@
 //
 
 import Foundation
-import OpenSSL
+internal import OpenSSL
 
 @available(iOS 13, macOS 10.15, *)
 public class DataGroup15 : DataGroup {

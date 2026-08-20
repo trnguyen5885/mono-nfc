@@ -5,7 +5,7 @@
 //
 
 import Foundation
-import OpenSSL
+internal import OpenSSL
 
 
 // Format of SOD: ASN1 - Signed Data  (taken from rfc5652 - https://tools.ietf.org/html/rfc5652):

@@ -1,6 +1,6 @@
 name: identity_nfc_android
 description: Android implementation for the identity_nfc Flutter plugin.
-version: 0.1.0-dev.1
+version: 1.0.0
 homepage: https://github.com/trnguyen5885/react-native-nitro-nfc
 
 environment:
@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   identity_nfc_platform_interface:
-    ^0.1.0-dev.1
+    ^1.0.0
 
 dev_dependencies:
   flutter_test:
@@ -37,7 +37,7 @@ flutter:
     implements: identity_nfc
     platforms:
       android:
-        package: com.identity.nfc.identitynfc
+        package: com.vppos.nfc.identitynfc
         pluginClass: IdentityNfcPlugin
 
   # To add assets to your plugin package, add an assets section, like this:
