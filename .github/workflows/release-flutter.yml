@@ -1,0 +1,199 @@
+name: Release Flutter NFC federation
+
+on:
+  push:
+    tags:
+      - 'flutter-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Package and publish private Pub release
+    runs-on: macos-latest
+    environment: flutter-pub-release
+    env:
+      PUB_HOSTED_URL: ${{ secrets.PUB_HOSTED_URL }}
+      PUB_TOKEN: ${{ secrets.PUB_TOKEN }}
+      NITRO_NFC_OPENSSL_URL: ${{ secrets.NITRO_NFC_OPENSSL_URL }}
+      NITRO_NFC_OPENSSL_SHA256: ${{ secrets.NITRO_NFC_OPENSSL_SHA256 }}
+
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e4f1b7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - name: Install Flutter 3.27.4
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter_root="$RUNNER_TEMP/flutter"
+          git clone --depth 1 --branch 3.27.4 https://github.com/flutter/flutter.git "$flutter_root"
+          echo "$flutter_root/bin" >> "$GITHUB_PATH"
+          "$flutter_root/bin/flutter" --version
+
+      - name: Install JavaScript dependencies
+        run: yarn install --immutable
+
+      - name: Validate release contract and configure Pub token
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "$PUB_HOSTED_URL" ]] || { echo 'Missing PUB_HOSTED_URL secret.' >&2; exit 1; }
+          [[ -n "$PUB_TOKEN" ]] || { echo 'Missing PUB_TOKEN secret.' >&2; exit 1; }
+          [[ "$PUB_HOSTED_URL" != https://pub.dev* ]] || { echo 'PUB_HOSTED_URL must be the private registry.' >&2; exit 1; }
+          [[ -n "$NITRO_NFC_OPENSSL_URL" ]] || { echo 'Missing NITRO_NFC_OPENSSL_URL secret.' >&2; exit 1; }
+          [[ -n "$NITRO_NFC_OPENSSL_SHA256" ]] || { echo 'Missing NITRO_NFC_OPENSSL_SHA256 secret.' >&2; exit 1; }
+          expected_version=1.0.0
+          for package in identity_nfc_platform_interface identity_nfc_android identity_nfc_ios identity_nfc; do
+            package_version="$(sed -nE 's/^version:[[:space:]]*([^[:space:]#]+).*/\1/p' "packages-flutter/$package/pubspec.yaml" | head -n 1)"
+            [[ "$package_version" == "$expected_version" ]] || {
+              echo "$package pubspec version must be $expected_version, got $package_version." >&2
+              exit 1
+            }
+          done
+          [[ "$(tr -d '[:space:]' < native/ios/NFCCore/VERSION)" == "$expected_version" ]] || {
+            echo 'Native iOS core version is not aligned with Flutter federation.' >&2
+            exit 1
+          }
+          [[ "$GITHUB_REF_NAME" == "flutter-v$expected_version" ]] || {
+            echo "Release tag must equal flutter-v$expected_version." >&2
+            exit 1
+          }
+          node - <<'NODE'
+          const { readFileSync, writeFileSync } = require('node:fs');
+          for (const packageName of [
+            'identity_nfc_platform_interface',
+            'identity_nfc_android',
+            'identity_nfc_ios',
+            'identity_nfc',
+          ]) {
+            const path = `packages-flutter/${packageName}/pubspec.yaml`;
+            const source = readFileSync(path, 'utf8');
+            const publishTo = `publish_to: ${process.env.PUB_HOSTED_URL}\n`;
+            const updated = /^publish_to:/m.test(source)
+              ? source.replace(/^publish_to:.*$/m, publishTo.trimEnd())
+              : source.replace(/^(homepage:.*\n)/m, `$1${publishTo}`);
+            writeFileSync(path, updated);
+          }
+          NODE
+          dart pub token add "$PUB_HOSTED_URL" --env-var PUB_TOKEN
+
+      - name: Retrieve pinned host OpenSSL
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/openssl.xcframework.zip"
+          destination="$RUNNER_TEMP/openssl-release"
+          curl --fail --location --retry 3 "$NITRO_NFC_OPENSSL_URL" --output "$archive"
+          echo "$NITRO_NFC_OPENSSL_SHA256  $archive" | shasum -a 256 -c -
+          unzip -q "$archive" -d "$destination"
+          host_openssl="$(find "$destination" -type d -name OpenSSL.xcframework -print -quit)"
+          [[ -n "$host_openssl" ]] || { echo 'Pinned archive has no OpenSSL.xcframework.' >&2; exit 1; }
+          echo "NITRO_NFC_HOST_OPENSSL_XCFRAMEWORK=$host_openssl" >> "$GITHUB_ENV"
+
+      - name: Build one native output and stage all adapters
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifacts="$RUNNER_TEMP/nfc-native-artifacts"
+          mkdir "$artifacts"
+          bash scripts/build-native-release-artifacts.sh --version 1.0.0 --output "$artifacts"
+          NFC_NATIVE_ARTIFACTS_DIR="$artifacts" yarn flutter:bundle-native
+          NFC_NATIVE_ARTIFACTS_DIR="$artifacts" yarn workspace react-native-nitro-nfc bundle:native
+          yarn flutter:verify-native-bundles
+          yarn workspace react-native-nitro-nfc verify:native-bundle
+
+      - name: Analyze, test, and inspect Pub archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          for package in identity_nfc_platform_interface identity_nfc_android identity_nfc_ios identity_nfc; do
+            pushd "packages-flutter/$package"
+            flutter pub get
+            flutter analyze
+            flutter test
+            flutter pub publish --dry-run --ignore-warnings | tee "$RUNNER_TEMP/$package-publish.txt"
+            popd
+          done
+          rg -q 'android/libs/nfc-core\.aar' "$RUNNER_TEMP/identity_nfc_android-publish.txt"
+          rg -q 'native-bundle\.json' "$RUNNER_TEMP/identity_nfc_android-publish.txt"
+          rg -q 'ios/Frameworks/self-contained/NFCCore\.xcframework' "$RUNNER_TEMP/identity_nfc_ios-publish.txt"
+          rg -q 'ios/Frameworks/host-openssl/NFCCore\.xcframework' "$RUNNER_TEMP/identity_nfc_ios-publish.txt"
+          rg -q 'ios/Frameworks/host-openssl/NFCCoreResources\.bundle' "$RUNNER_TEMP/identity_nfc_ios-publish.txt"
+          rg -q 'native-bundle\.json' "$RUNNER_TEMP/identity_nfc_ios-publish.txt"
+
+      - name: Build bundled Flutter consumers
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd packages-flutter/identity_nfc/example
+          flutter pub get
+          IDENTITY_NFC_USE_SOURCE_CORE=0 flutter build appbundle --release
+          cd ios
+          IDENTITY_NFC_USE_SOURCE_CORE=0 pod install
+          cd ..
+          IDENTITY_NFC_USE_SOURCE_CORE=0 flutter build ios --release --no-codesign
+          cd ios
+          IDENTITY_NFC_USE_SOURCE_CORE=0 IDENTITY_NFC_USE_MANUAL_OPENSSL=1 pod install
+          cd ..
+          IDENTITY_NFC_USE_SOURCE_CORE=0 IDENTITY_NFC_USE_MANUAL_OPENSSL=1 flutter build ios --release --no-codesign
+
+      - name: Publish the federation in dependency order
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_version=1.0.0
+          for package in identity_nfc_platform_interface identity_nfc_android identity_nfc_ios identity_nfc; do
+            if dart pub cache add "$package" --version "$package_version" >/dev/null 2>&1; then
+              echo "$package@$package_version is already published; releases are immutable." >&2
+              exit 1
+            fi
+            pushd "packages-flutter/$package"
+            flutter pub publish --force --ignore-warnings
+            popd
+            for attempt in {1..12}; do
+              if dart pub cache add "$package" --version "$package_version" >/dev/null 2>&1; then
+                break
+              fi
+              [[ "$attempt" == 12 ]] && { echo "$package did not resolve from Pub registry." >&2; exit 1; }
+              sleep 10
+            done
+          done
+
+      - name: Install the published facade in a clean consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          consumer="$RUNNER_TEMP/identity-nfc-release-smoke"
+          flutter create --platforms=android,ios "$consumer"
+          cd "$consumer"
+          flutter pub add identity_nfc:^1.0.0
+          flutter pub get
+          node - <<'NODE'
+          const { fileURLToPath } = require('node:url');
+          const { existsSync, readFileSync } = require('node:fs');
+          const config = JSON.parse(readFileSync('.dart_tool/package_config.json', 'utf8'));
+          for (const [name, asset] of [
+            ['identity_nfc_android', 'android/libs/nfc-core.aar'],
+            ['identity_nfc_ios', 'ios/Frameworks/self-contained/NFCCore.xcframework/Info.plist'],
+            ['identity_nfc_ios', 'ios/Frameworks/host-openssl/NFCCore.xcframework/Info.plist'],
+            ['identity_nfc_ios', 'ios/Frameworks/host-openssl/NFCCoreResources.bundle/Info.plist'],
+          ]) {
+            const entry = config.packages.find((candidate) => candidate.name === name);
+            if (!entry || !existsSync(`${fileURLToPath(entry.rootUri)}${asset}`)) {
+              throw new Error(`Missing installed release asset: ${name}/${asset}`);
+            }
+          }
+          NODE

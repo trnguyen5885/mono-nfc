@@ -1,0 +1,123 @@
+name: Release React Native Nitro NFC
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: ${{ !startsWith(github.ref_name, 'flutter-v') }}
+    name: Package and publish npm release
+    runs-on: macos-latest
+    environment: npm-release
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      NITRO_NFC_OPENSSL_URL: ${{ secrets.NITRO_NFC_OPENSSL_URL }}
+      NITRO_NFC_OPENSSL_SHA256: ${{ secrets.NITRO_NFC_OPENSSL_SHA256 }}
+
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e4f1b7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          registry-url: https://registry.npmjs.org/
+
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - name: Install JavaScript dependencies
+        run: yarn install --immutable
+
+      - name: Install CocoaPods dependencies
+        run: |
+          cd examples/react-native-example
+          bundle install
+
+      - name: Validate the tag and retrieve pinned host OpenSSL
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_version="$(node -p "require('./packages/react-native-nitro-nfc/package.json').version")"
+          [[ "${GITHUB_REF_NAME}" == "${package_version}" ]] || {
+            echo "Release tag ${GITHUB_REF_NAME} must equal package version ${package_version}." >&2
+            exit 1
+          }
+          [[ -n "${NITRO_NFC_OPENSSL_URL}" ]] || { echo "Missing NITRO_NFC_OPENSSL_URL secret." >&2; exit 1; }
+          [[ -n "${NITRO_NFC_OPENSSL_SHA256}" ]] || { echo "Missing NITRO_NFC_OPENSSL_SHA256 secret." >&2; exit 1; }
+          curl --fail --location --retry 3 "${NITRO_NFC_OPENSSL_URL}" --output /tmp/openssl.xcframework.zip
+          echo "${NITRO_NFC_OPENSSL_SHA256}  /tmp/openssl.xcframework.zip" | shasum -a 256 -c -
+          unzip -q /tmp/openssl.xcframework.zip -d /tmp/openssl-release
+          host_openssl="$(find /tmp/openssl-release -type d -name OpenSSL.xcframework -print -quit)"
+          [[ -n "${host_openssl}" ]] || { echo "Pinned archive has no OpenSSL.xcframework." >&2; exit 1; }
+          echo "NITRO_NFC_HOST_OPENSSL_XCFRAMEWORK=${host_openssl}" >> "$GITHUB_ENV"
+
+      - name: Build package and native core artifacts
+        run: |
+          yarn prepare
+          yarn nitrogen
+          yarn typecheck
+          yarn lint
+          yarn test
+          yarn workspace react-native-nitro-nfc bundle:native
+
+      - name: Pack and inspect npm tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd packages/react-native-nitro-nfc
+          npm pack
+          archive="$(find . -maxdepth 1 -name 'react-native-nitro-nfc-*.tgz' -print -quit)"
+          [[ -n "${archive}" ]] || { echo "npm pack produced no archive." >&2; exit 1; }
+          tar -tzf "${archive}" | rg -q 'package/android/libs/nfc-core\.aar'
+          tar -tzf "${archive}" | rg -q 'package/ios/Frameworks/self-contained/NFCCore\.xcframework/'
+          tar -tzf "${archive}" | rg -q 'package/ios/Frameworks/host-openssl/NFCCore\.xcframework/'
+          tar -tzf "${archive}" | rg -q 'package/ios/Frameworks/host-openssl/NFCCoreResources\.bundle/'
+          tar -tzf "${archive}" | rg -q 'package/native-bundle\.json'
+          echo "NPM_TARBALL=$(pwd)/${archive#./}" >> "$GITHUB_ENV"
+
+      - name: Build bundled Android consumer
+        run: yarn workspace react-native-nitro-nfc-example build:android:bundled
+
+      - name: Install the packed npm artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          smoke_directory=/tmp/nitro-nfc-npm-install
+          rm -rf "${smoke_directory}"
+          mkdir -p "${smoke_directory}"
+          cd "${smoke_directory}"
+          npm init --yes >/dev/null
+          npm install --ignore-scripts --legacy-peer-deps "${NPM_TARBALL}"
+          test -f node_modules/react-native-nitro-nfc/android/libs/nfc-core.aar
+          test -f node_modules/react-native-nitro-nfc/ios/Frameworks/self-contained/NFCCore.xcframework/Info.plist
+          test -f node_modules/react-native-nitro-nfc/ios/Frameworks/host-openssl/NFCCore.xcframework/Info.plist
+          test -f node_modules/react-native-nitro-nfc/ios/Frameworks/host-openssl/NFCCoreResources.bundle/Info.plist
+
+      - name: Build bundled iOS consumers
+        run: |
+          cd examples/react-native-example
+          NITRO_NFC_USE_SOURCE_CORE=0 bundle exec pod install --project-directory=ios
+          yarn build:ios:bundled
+          NITRO_NFC_USE_SOURCE_CORE=0 NITRO_NFC_USE_MANUAL_OPENSSL=1 bundle exec pod install --project-directory=ios
+          yarn build:ios:bundled:manual-openssl
+
+      - name: Publish npm package
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_version="$(node -p \"require('./packages/react-native-nitro-nfc/package.json').version\")"
+          if npm view "react-native-nitro-nfc@${package_version}" version --registry=https://registry.npmjs.org/ >/dev/null 2>&1; then
+            echo "react-native-nitro-nfc@${package_version} is already published; releases are immutable." >&2
+            exit 1
+          fi
+          npm publish "$NPM_TARBALL"
