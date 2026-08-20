@@ -37,6 +37,15 @@ android {
             signingConfig = signingConfigs.debug
         }
     }
+
+    // Bouncy Castle ships Java multi-release metadata in several artifacts.
+    // Android does not consume it, and excluding it prevents duplicate
+    // META-INF resources when nfc-core is resolved by a Flutter host.
+    packaging {
+        resources {
+            excludes += ["META-INF/**"]
+        }
+    }
 }
 
 flutter {

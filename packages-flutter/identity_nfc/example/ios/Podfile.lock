@@ -1,9 +1,9 @@
 PODS:
   - Flutter (1.0.0)
-  - identity_nfc_ios (0.1.0-dev.1):
+  - identity_nfc_ios (1.0.0):
     - Flutter
-    - NFCCore (~> 0.1)
-  - NFCCore (0.1.0):
+    - NFCCore (~> 1.0)
+  - NFCCore (1.0.0):
     - OpenSSL-Universal (~> 1.1)
   - OpenSSL-Universal (1.1.2301)
 
@@ -25,11 +25,11 @@ EXTERNAL SOURCES:
     :path: "../../../../native/ios/NFCCore"
 
 SPEC CHECKSUMS:
-  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
-  identity_nfc_ios: 0d75730cc80daa9f6313fc0cd247658506c0eb9e
-  NFCCore: 271aae68e8123d28bf5fbc4ecfc4556d59f2d976
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  identity_nfc_ios: 95bd8e147bfdde160bb81c6d236a94a0375ef59b
+  NFCCore: 146301c415cae9e3938849afd85e29fa4b97ec8b
   OpenSSL-Universal: ca89c20240633a77c776082ba76b7d90f992bf77
 
-PODFILE CHECKSUM: 6837856eb677f6fc735afabafdef93b5d959574c
+PODFILE CHECKSUM: b0976052618e6998b679db54f627d58c25cd2c94
 
 COCOAPODS: 1.16.2
