@@ -2,7 +2,9 @@
 
 Hướng dẫn này dành cho ứng dụng React Native tiêu thụ package đã phát hành
 `react-native-nitro-nfc`. Package mở native NFC UI, còn Android/iOS core đọc
-chip, PACE, parse dữ liệu và quản lý cache ngắn hạn.
+chip, PACE, parse dữ liệu và quản lý cache ngắn hạn. Bản npm production mang
+sẵn Android AAR và hai biến thể iOS XCFramework; host không cần Maven hoặc
+CocoaPods Specs repository riêng cho NFC core.
 
 ## 1. Điều kiện trước khi tích hợp
 
@@ -11,9 +13,6 @@ chip, PACE, parse dữ liệu và quản lý cache ngắn hạn.
 - Android: thiết bị thật có NFC, Android API 24 trở lên và NFC đang bật.
 - iOS: thiết bị thật iOS 15 trở lên, Apple Developer team được cấp quyền NFC
   Tag Reading.
-- Artifact `nfc-core` (Maven/AAR) và `NFCCore` CocoaPods pod (hiện là source
-  pod) phải đã được library distributor publish ở repository mà ứng dụng host có
-  thể truy cập.
 
 Emulator Android và iOS Simulator không thể thay thế kiểm thử chip NFC thật.
 
@@ -54,27 +53,10 @@ android {
 }
 ```
 
-Khi dùng artifact production, Gradle phải biết Maven repository chứa
-`com.vppos.nfc:nfc-core`. URL và credentials do library distributor cung cấp;
-không thêm local Gradle project `:nfc-core` vào app production.
-
-Để thử library từ local Maven, publisher đưa **toàn bộ** thư mục Maven cho host,
-không chỉ file AAR. Trong `android/settings.gradle` của app host, thêm repository
-trước `google()` và `mavenCentral()`:
-
-```groovy
-dependencyResolutionManagement {
-  repositories {
-    maven { url uri("/absolute/path/to/vppos-nfc-maven") }
-    google()
-    mavenCentral()
-  }
-}
-```
-
-Adapter sẽ resolve `com.vppos.nfc:nfc-core:<nfcCoreVersion>` khi host không
-include `:nfc-core`. Pin một version SemVer đã publish, ví dụ
-`1.0.0`; không dùng version động hoặc `SNAPSHOT`.
+Adapter liên kết `nfc-core.aar` đã nằm trong npm package. Host không thêm local
+Gradle project `:nfc-core`, Maven URL hoặc credential NFC SDK. Các dependency
+công khai của Android core vẫn resolve qua `google()` và `mavenCentral()` (hoặc
+internal mirror tương đương) như cấu hình Gradle tiêu chuẩn của host.
 
 Trước khi gọi scan, người dùng cần bật NFC. `NFCSDK.isAvailable()` trả `false`
 khi không có adapter hoặc native module không khả dụng. Khi adapter có nhưng
@@ -112,18 +94,19 @@ pod install
 
 ### OpenSSL
 
-Mặc định `NFCCore` tự kéo `OpenSSL-Universal`. Đây là mode nên dùng cho app
-mới. Không thêm OpenSSL binary thứ hai vào host.
+Mặc định adapter liên kết XCFramework `self-contained`; framework này giữ
+OpenSSL private, nên host không thêm OpenSSL binary thứ hai.
 
-Chỉ khi host đã quản lý một OpenSSL tương thích, dùng manual mode trước lúc
-`pod install`:
+Nếu host đã quản lý một OpenSSL tương thích, chọn XCFramework static
+`host-openssl` trước lúc `pod install`:
 
 ```sh
 NITRO_NFC_USE_MANUAL_OPENSSL=1 pod install
 ```
 
-Trong mode này host phải tự khai báo provider của mình trong Podfile và provider
-đó phải expose Swift module tên `OpenSSL`. `NFCSDK_USE_MANUAL_OPENSSL=1` vẫn là
+Trong mode này host phải tự khai báo **một** provider tương thích trong Podfile;
+provider phải expose Swift module tên `OpenSSL`. Provider dynamic dùng Embed &
+Sign, provider static dùng Do Not Embed. `NFCSDK_USE_MANUAL_OPENSSL=1` vẫn là
 alias tương thích cũ. Không bật manual mode nếu host chưa cung cấp OpenSSL.
 
 ## 5. Luồng scan khuyến nghị
@@ -219,8 +202,8 @@ hai lần.
 - [ ] Không log hoặc lưu DG bytes, ảnh chip, CAN/CCCD ngoài nhu cầu nghiệp vụ.
 - [ ] Gọi `clearCachedScan()` sau khi flow hoàn tất.
 - [ ] Xác nhận entitlement iOS có trong provisioning profile release.
-- [ ] Xác nhận repository Maven/Pods và version native core được pin theo
-      release của `react-native-nitro-nfc`.
+- [ ] Xác nhận `native-bundle.json` của package khớp release và không có Maven/
+      CocoaPods source dependency NFC SDK ngoài package.
 - [ ] Kiểm thử success, cancel, NFC disabled, tag lost, retry và `readImage: false`.
 
 Xem thêm [architecture và parity matrix](../architecture/PARITY_CHECKS.md).
