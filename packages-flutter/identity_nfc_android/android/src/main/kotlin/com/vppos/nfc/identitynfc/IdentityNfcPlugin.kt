@@ -2,25 +2,29 @@ package com.vppos.nfc.identitynfc
 
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.nfc.NfcAdapter
+import com.vppos.nfc.core.NfcCachePolicy
 import com.vppos.nfc.core.NfcCore
+import com.vppos.nfc.core.NfcScanRequest
+import com.vppos.nfc.core.NfcScanResult
+import com.vppos.nfc.core.NfcScanUi
+import com.vppos.nfc.core.NfcScanUiListener
+import com.vppos.nfc.core.utils.NfcCoreErrorPayload
+import com.vppos.nfc.core.utils.NfcUiText
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugin.common.PluginRegistry
 
-/** Flutter adapter for the platform-neutral Android `nfc-core` artifact. */
+/** Flutter transport layer over the core-owned Android NFC scan UI. */
 class IdentityNfcPlugin :
   FlutterPlugin,
   MethodChannel.MethodCallHandler,
   EventChannel.StreamHandler,
   ActivityAware {
   companion object {
-    private const val SCAN_REQUEST_CODE = 20_271
     private const val METHOD_CHANNEL = "identity_nfc/methods"
     private const val EVENT_CHANNEL = "identity_nfc/progress"
   }
@@ -30,30 +34,6 @@ class IdentityNfcPlugin :
   private lateinit var events: EventChannel
   private var activity: Activity? = null
   private var pendingScanResult: MethodChannel.Result? = null
-
-  private val activityResultListener = PluginRegistry.ActivityResultListener {
-      requestCode,
-      resultCode,
-      data,
-    ->
-    if (requestCode != SCAN_REQUEST_CODE) {
-      return@ActivityResultListener false
-    }
-
-    val result = pendingScanResult ?: return@ActivityResultListener true
-    pendingScanResult = null
-    if (resultCode == Activity.RESULT_OK && data != null) {
-      result.success(data.toScanResultMap())
-    } else {
-      result.error(
-        data?.getStringExtra(IdentityNfcScanActivity.EXTRA_ERROR_CODE) ?: "UserCanceled",
-        data?.getStringExtra(IdentityNfcScanActivity.EXTRA_ERROR_MESSAGE)
-          ?: "NFC scan was canceled.",
-        null,
-      )
-    }
-    true
-  }
 
   override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
     applicationContext = binding.applicationContext
@@ -79,12 +59,7 @@ class IdentityNfcPlugin :
     NfcAdapter.getDefaultAdapter(applicationContext)?.isEnabled == true
 
   private fun startScan(call: MethodCall, result: MethodChannel.Result) {
-    val hostActivity = activity
-    if (hostActivity == null) {
-      result.error("ActivityUnavailable", "NFC scan requires a foreground Android Activity.", null)
-      return
-    }
-    if (pendingScanResult != null) {
+    if (pendingScanResult != null || NfcScanUi.isOpen) {
       result.error("ScanInProgress", "An NFC scan is already active.", null)
       return
     }
@@ -96,24 +71,66 @@ class IdentityNfcPlugin :
       return
     }
 
-    pendingScanResult = result
-    val intent = Intent(hostActivity, IdentityNfcScanActivity::class.java).apply {
-      putExtra(IdentityNfcScanActivity.EXTRA_CITIZEN_ID, citizenId)
-      putExtra(IdentityNfcScanActivity.EXTRA_READ_IMAGE, arguments["readImage"] as? Boolean ?: true)
-      putExtra(
-        IdentityNfcScanActivity.EXTRA_CACHE_POLICY,
-        arguments["cachePolicy"] as? String ?: "fresh",
-      )
-      putExtra(IdentityNfcScanActivity.EXTRA_LANGUAGE, arguments["language"] as? String ?: "en")
-    }
+    val language = arguments["language"] as? String ?: "en"
+    val request = NfcScanRequest(
+      citizenId = citizenId,
+      readImage = arguments["readImage"] as? Boolean ?: true,
+      cachePolicy = NfcCachePolicy.fromWireValue(arguments["cachePolicy"] as? String ?: "fresh"),
+      language = language,
+    )
 
+    pendingScanResult = result
     try {
-      hostActivity.startActivityForResult(intent, SCAN_REQUEST_CODE)
-    } catch (error: Exception) {
-      pendingScanResult = null
-      result.error("ScanLaunchFailed", error.message ?: "Unable to start NFC scan.", null)
+      val started = NfcScanUi.start(
+        activity ?: applicationContext,
+        request,
+        object : NfcScanUiListener {
+          override fun onProgress(progress: Int, message: String) {
+            IdentityNfcEvents.progress(progress, message)
+          }
+
+          override fun onRecoverableError(error: NfcCoreErrorPayload) {
+            IdentityNfcEvents.error(error.code, error.message)
+          }
+
+          override fun onSuccess(result: NfcScanResult) {
+            completeScan(result)
+          }
+
+          override fun onCancelled(error: NfcCoreErrorPayload) {
+            failScan(error)
+          }
+
+          override fun onFailure(error: NfcCoreErrorPayload) {
+            failScan(error)
+          }
+        },
+      )
+      if (started) {
+        IdentityNfcEvents.progress(0, NfcUiText(language).openingNativeScreen)
+      }
+    } catch (error: Throwable) {
+      failScan(
+        NfcCoreErrorPayload(
+          code = "ScanLaunchFailed",
+          message = error.message ?: "Unable to start NFC scan.",
+        ),
+      )
     }
   }
+
+  private fun completeScan(result: NfcScanResult) {
+    val pending = takePendingScanResult() ?: return
+    pending.success(result.toScanResultMap())
+  }
+
+  private fun failScan(error: NfcCoreErrorPayload) {
+    val pending = takePendingScanResult() ?: return
+    pending.error(error.code, error.message, null)
+  }
+
+  private fun takePendingScanResult(): MethodChannel.Result? =
+    pendingScanResult.also { pendingScanResult = null }
 
   override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
     IdentityNfcEvents.attach(events)
@@ -125,11 +142,10 @@ class IdentityNfcPlugin :
 
   override fun onAttachedToActivity(binding: ActivityPluginBinding) {
     activity = binding.activity
-    binding.addActivityResultListener(activityResultListener)
   }
 
   override fun onDetachedFromActivityForConfigChanges() {
-    detachActivity()
+    activity = null
   }
 
   override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
@@ -137,16 +153,6 @@ class IdentityNfcPlugin :
   }
 
   override fun onDetachedFromActivity() {
-    detachActivity()
-    pendingScanResult?.error(
-      "ActivityUnavailable",
-      "The Android Activity was detached before NFC scan completed.",
-      null,
-    )
-    pendingScanResult = null
-  }
-
-  private fun detachActivity() {
     activity = null
   }
 
@@ -154,24 +160,25 @@ class IdentityNfcPlugin :
     methods.setMethodCallHandler(null)
     events.setStreamHandler(null)
     IdentityNfcEvents.detach()
+    pendingScanResult = null
   }
 
-  private fun Intent.toScanResultMap(): Map<String, Any> = mapOf(
-    "citizenId" to getStringExtra(IdentityNfcScanActivity.RESULT_CITIZEN_ID).orEmpty(),
-    "fullName" to getStringExtra(IdentityNfcScanActivity.RESULT_FULL_NAME).orEmpty(),
-    "dob" to getStringExtra(IdentityNfcScanActivity.RESULT_DOB).orEmpty(),
-    "gender" to getStringExtra(IdentityNfcScanActivity.RESULT_GENDER).orEmpty(),
-    "nationality" to getStringExtra(IdentityNfcScanActivity.RESULT_NATIONALITY).orEmpty(),
-    "permanentAddress" to getStringExtra(IdentityNfcScanActivity.RESULT_PERMANENT_ADDRESS).orEmpty(),
-    "issueDate" to getStringExtra(IdentityNfcScanActivity.RESULT_ISSUE_DATE).orEmpty(),
-    "issuePlace" to getStringExtra(IdentityNfcScanActivity.RESULT_ISSUE_PLACE).orEmpty(),
-    "expireDate" to getStringExtra(IdentityNfcScanActivity.RESULT_EXPIRE_DATE).orEmpty(),
-    "imageFromChipData" to (getByteArrayExtra(IdentityNfcScanActivity.RESULT_IMAGE) ?: ByteArray(0)),
-    "chipImageMimeType" to getStringExtra(IdentityNfcScanActivity.RESULT_IMAGE_MIME_TYPE).orEmpty(),
-    "dg1Data" to (getByteArrayExtra(IdentityNfcScanActivity.RESULT_DG1) ?: ByteArray(0)),
-    "dg2Data" to (getByteArrayExtra(IdentityNfcScanActivity.RESULT_DG2) ?: ByteArray(0)),
-    "dg13Data" to (getByteArrayExtra(IdentityNfcScanActivity.RESULT_DG13) ?: ByteArray(0)),
-    "dg14Data" to (getByteArrayExtra(IdentityNfcScanActivity.RESULT_DG14) ?: ByteArray(0)),
-    "sodData" to (getByteArrayExtra(IdentityNfcScanActivity.RESULT_SOD) ?: ByteArray(0)),
+  private fun NfcScanResult.toScanResultMap(): Map<String, Any> = mapOf(
+    "citizenId" to citizenId,
+    "fullName" to fullName,
+    "dob" to dob,
+    "gender" to gender,
+    "nationality" to nationality,
+    "permanentAddress" to permanentAddress,
+    "issueDate" to issueDate,
+    "issuePlace" to issuePlace,
+    "expireDate" to expireDate,
+    "imageFromChipData" to imageFromChipBytes,
+    "chipImageMimeType" to chipImageMimeType,
+    "dg1Data" to dg1Bytes,
+    "dg2Data" to dg2Bytes,
+    "dg13Data" to dg13Bytes,
+    "dg14Data" to dg14Bytes,
+    "sodData" to sodBytes,
   )
 }
