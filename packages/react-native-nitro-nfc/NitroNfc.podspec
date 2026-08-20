@@ -4,9 +4,27 @@ package = JSON.parse(File.read(File.join(__dir__, "package.json")))
 use_manual_openssl =
   ENV["NITRO_NFC_USE_MANUAL_OPENSSL"] == "1" ||
   ENV["NFCSDK_USE_MANUAL_OPENSSL"] == "1"
+use_source_core = ENV["NITRO_NFC_USE_SOURCE_CORE"] == "1"
 
-if use_manual_openssl && defined?(Pod::UI)
-  Pod::UI.puts "NitroNfc: using host-provided OpenSSL through NFCCore".yellow
+core_variant = use_manual_openssl ? "host-openssl" : "self-contained"
+framework_path = "ios/Frameworks/#{core_variant}/NFCCore.xcframework"
+
+unless use_source_core || File.directory?(File.join(__dir__, framework_path))
+  raise <<~MESSAGE
+    NitroNfc is missing its bundled #{core_variant} NFCCore.xcframework.
+    Install a complete react-native-nitro-nfc npm package. Library maintainers
+    must run `yarn workspace react-native-nitro-nfc bundle:native` before packing.
+  MESSAGE
+end
+
+if defined?(Pod::UI)
+  if use_source_core
+    Pod::UI.puts "NitroNfc: using source NFCCore for monorepo development".yellow
+  elsif use_manual_openssl
+    Pod::UI.puts "NitroNfc: using host-provided OpenSSL through bundled NFCCore".yellow
+  else
+    Pod::UI.puts "NitroNfc: using self-contained bundled NFCCore".green
+  end
 end
 
 Pod::Spec.new do |s|
@@ -17,7 +35,7 @@ Pod::Spec.new do |s|
   s.license      = package["license"]
   s.authors      = package["author"]
 
-  s.platforms    = { :ios => min_ios_version_supported }
+  s.platforms    = { :ios => "15.0" }
   s.source       = { :git => "https://github.com/trnguyen5885/react-native-nitro-nfc.git", :tag => "#{s.version}" }
 
   s.source_files = [
@@ -26,11 +44,20 @@ Pod::Spec.new do |s|
     "cpp/**/*.{hpp,cpp}",
   ]
 
-  s.frameworks = "CoreNFC"
+  s.frameworks = "CoreNFC", "CryptoKit", "CryptoTokenKit", "UIKit"
   s.swift_version = "5.0"
   s.dependency 'React-jsi'
   s.dependency 'React-callinvoker'
-  s.dependency "NFCCore", "~> 0.1"
+  if use_source_core
+    # The example Podfile supplies this dependency as a local path. This mode is
+    # deliberately opt-in and must never be used by the published npm package.
+    s.dependency "NFCCore", "~> 1.0"
+  else
+    s.vendored_frameworks = framework_path
+    # The static host-openssl build has no framework bundle, so its resources
+    # must be copied by the consuming application target.
+    s.resources = "ios/Frameworks/host-openssl/NFCCoreResources.bundle" if use_manual_openssl
+  end
   s.xcconfig = {
     "OTHER_LDFLAGS" => "-weak_framework CryptoKit -weak_framework CoreNFC -weak_framework CryptoTokenKit"
   }

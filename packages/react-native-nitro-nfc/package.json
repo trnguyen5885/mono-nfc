@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-nfc",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "React Native Nitro NFC reader for Vietnamese citizen ID chips",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
@@ -20,6 +20,7 @@
     "cpp",
     "nitrogen",
     "nitro.json",
+    "native-bundle.json",
     "*.podspec",
     "react-native.config.js",
     "!ios/build",
@@ -43,6 +44,9 @@
     "test": "jest",
     "build:android": "yarn workspace react-native-nitro-nfc-example build:android",
     "build:ios": "yarn workspace react-native-nitro-nfc-example build:ios",
+    "bundle:native": "bash ./scripts/bundle-native-artifacts.sh",
+    "verify:native-bundle": "node ./scripts/verify-native-bundle.mjs",
+    "prepack": "yarn verify:native-bundle",
     "release": "release-it --only-version",
     "web": "vite",
     "build:web": "vite build"
@@ -64,6 +68,10 @@
   "homepage": "https://github.com/trnguyen5885/react-native-nitro-nfc#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
+  },
+  "nativeCoreVersions": {
+    "android": "1.0.0",
+    "ios": "1.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -155,7 +163,7 @@
   "release-it": {
     "git": {
       "commitMessage": "chore: release ${version}",
-      "tagName": "v${version}"
+      "tagName": "${version}"
     },
     "npm": {
       "publish": true

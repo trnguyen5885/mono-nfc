@@ -112,8 +112,34 @@ dependencies {
   if (rootProject.findProject(":nfc-core") != null) {
     implementation project(":nfc-core")
   } else {
-    def nfcCoreVersion = rootProject.findProperty("nfcCoreVersion") ?: "1.0.0"
-    implementation "com.vppos.nfc:nfc-core:${nfcCoreVersion}"
+    // Published npm packages carry this release AAR. Keeping the Maven
+    // coordinate out of the fallback means a consumer does not need an NFC SDK
+    // repository or credentials in its Gradle settings.
+    def bundledNfcCore = file("libs/nfc-core.aar")
+    if (!bundledNfcCore.isFile()) {
+      throw new GradleException(
+        "Missing bundled nfc-core.aar. Install a complete react-native-nitro-nfc package " +
+          "or run `yarn workspace react-native-nitro-nfc bundle:native` before packing it.",
+      )
+    }
+
+    implementation files(bundledNfcCore)
+
+    // A local AAR has no POM metadata, so mirror nfc-core's release dependency
+    // graph here. Keep the Bouncy Castle modules aligned with the core.
+    implementation "androidx.activity:activity-ktx:1.10.1"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib"
+    implementation "org.jmrtd:jmrtd:0.8.6"
+    implementation "net.sf.scuba:scuba-sc-android:0.0.26"
+    implementation("org.bouncycastle:bcprov-jdk18on") {
+      version { strictly "1.84" }
+    }
+    implementation("org.bouncycastle:bcpkix-jdk18on") {
+      version { strictly "1.84" }
+    }
+    implementation("org.bouncycastle:bcutil-jdk18on") {
+      version { strictly "1.84" }
+    }
   }
   implementation "androidx.appcompat:appcompat:1.7.0"
 }
